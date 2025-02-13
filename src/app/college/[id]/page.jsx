@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send } from "lucide-react"
+import { API_URL } from "@/config"
 
 export default function CollegePage() {
   const params = useParams()
@@ -31,7 +32,7 @@ export default function CollegePage() {
   useEffect(() => {
     const fetchCollegeDetails = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/v1/college/${params.id}`)
+        const response = await fetch(`${API_URL}/api/v1/college/${params.id}`)
         if (!response.ok) {
           throw new Error('Failed to fetch college details')
         }
@@ -83,7 +84,7 @@ export default function CollegePage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/chat', {
+      const response = await fetch(`${API_URL}/api/v1/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

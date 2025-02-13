@@ -1,0 +1,1 @@
+export const API_URL = 'https://college-admissions-backend-d8090222c5d5.herokuapp.com'; 

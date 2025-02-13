@@ -24,6 +24,7 @@ import {
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send } from "lucide-react"
+import { API_URL } from "@/config"
 
 export function SearchForm() {
   const router = useRouter()
@@ -74,7 +75,7 @@ export function SearchForm() {
     setSortConfig({ key: null, direction: null })
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/search', {
+      const response = await fetch(`${API_URL}/api/v1/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -208,7 +209,7 @@ export function SearchForm() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/aggregate_chat', {
+      const response = await fetch(`${API_URL}/api/v1/aggregate_chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
