@@ -2,8 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
 }
 
 @layer base {
@@ -68,5 +74,9 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-primary);
+  }
+  code, pre, kbd {
+    font-family: var(--font-mono);
   }
 }

@@ -25,17 +25,22 @@ import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send } from "lucide-react"
 import { API_URL } from "@/config"
+import { tailwindColors } from "@/lib/theme"
+import { Checkbox } from "@/components/ui/checkbox"
 
-export function SearchForm() {
+export function SearchForm({ isSidebar = false }) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     type: "",
+    collegeTypes: [],
     satVerbalMin: "",
     satVerbalMax: "",
     satMathMin: "",
     satMathMax: "",
     tuitionMin: "",
     tuitionMax: "",
+    studyAreas: [],
+    onlineOptions: [],
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -55,7 +60,19 @@ export function SearchForm() {
   useEffect(() => {
     const savedFormData = sessionStorage.getItem('collegeSearchFormData')
     if (savedFormData) {
-      setFormData(JSON.parse(savedFormData))
+      try {
+        const parsedData = JSON.parse(savedFormData)
+        // Ensure arrays are initialized
+        setFormData({
+          ...parsedData,
+          collegeTypes: parsedData.collegeTypes || [],
+          studyAreas: parsedData.studyAreas || [],
+          onlineOptions: parsedData.onlineOptions || []
+        })
+      } catch (e) {
+        console.error("Error parsing saved form data:", e)
+        // If there's an error, use the default state
+      }
     }
   }, [])
 
@@ -271,149 +288,431 @@ export function SearchForm() {
     }
   }
 
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleCheckboxChange = (field, value, checked) => {
+    setFormData(prev => {
+      const currentValues = prev[field] || [];
+      return {
+        ...prev,
+        [field]: checked 
+          ? [...currentValues, value]
+          : currentValues.filter(item => item !== value)
+      };
+    });
+  }
+
+  // Render a sidebar-optimized form if isSidebar is true
+  if (isSidebar) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">College type</h3>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-4year" 
+                  checked={(formData.collegeTypes || []).includes('4-year')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', '4-year', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-4year" className="ml-2 text-sm text-[#2081C3]/80">4-year</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-private" 
+                  checked={(formData.collegeTypes || []).includes('private')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'private', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-private" className="ml-2 text-sm text-[#2081C3]/80">Private</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-public" 
+                  checked={(formData.collegeTypes || []).includes('public')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'public', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-public" className="ml-2 text-sm text-[#2081C3]/80">Public</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-2year" 
+                  checked={(formData.collegeTypes || []).includes('2-year')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', '2-year', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-2year" className="ml-2 text-sm text-[#2081C3]/80">2-year</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-community" 
+                  checked={(formData.collegeTypes || []).includes('community')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'community', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-community" className="ml-2 text-sm text-[#2081C3]/80">Community</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-trade" 
+                  checked={(formData.collegeTypes || []).includes('trade')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'trade', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-trade" className="ml-2 text-sm text-[#2081C3]/80">Trade/career</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="type-other" 
+                  checked={(formData.collegeTypes || []).includes('other')}
+                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'other', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="type-other" className="ml-2 text-sm text-[#2081C3]/80">Other</label>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BED8D4] pt-4">
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3] flex items-center">
+              General area of study 
+              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#BED8D4] text-[#2081C3] text-xs">?</span>
+            </h3>
+            <Select
+              value={formData.studyArea}
+              onValueChange={(value) => handleInputChange("studyArea", value)}
+            >
+              <SelectTrigger className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm">
+                <SelectValue placeholder="Select area" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-[#BED8D4]">
+                <SelectItem value="arts">Arts & Humanities</SelectItem>
+                <SelectItem value="business">Business</SelectItem>
+                <SelectItem value="engineering">Engineering</SelectItem>
+                <SelectItem value="science">Science</SelectItem>
+                <SelectItem value="social">Social Sciences</SelectItem>
+                <SelectItem value="health">Health Sciences</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="border-t border-[#BED8D4] pt-4">
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3] flex items-center">
+              Majors
+              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#BED8D4] text-[#2081C3] text-xs">?</span>
+            </h3>
+            <Input
+              placeholder="Search majors..."
+              className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm mb-2"
+            />
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Checkbox 
+                  id="online" 
+                  checked={(formData.onlineOptions || []).includes('online')}
+                  onCheckedChange={(checked) => handleCheckboxChange('onlineOptions', 'online', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="online" className="ml-2 text-sm text-[#2081C3]/80">Online</label>
+              </div>
+              <div className="flex items-center">
+                <Checkbox 
+                  id="campus" 
+                  checked={(formData.onlineOptions || []).includes('campus')}
+                  onCheckedChange={(checked) => handleCheckboxChange('onlineOptions', 'campus', checked)}
+                  className="border-[#BED8D4] text-[#2081C3]"
+                />
+                <label htmlFor="campus" className="ml-2 text-sm text-[#2081C3]/80">Campus</label>
+              </div>
+            </div>
+            <div className="mt-2">
+              <a href="#" className="text-sm text-[#2081C3] hover:underline">See all majors</a>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BED8D4] pt-4">
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">SAT Verbal Range</h3>
+            <div className="space-y-2">
+              <div>
+                <label htmlFor="satVerbalMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <Input
+                  id="satVerbalMin"
+                  type="number"
+                  placeholder="Min"
+                  value={formData.satVerbalMin}
+                  onChange={(e) => handleInputChange("satVerbalMin", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="satVerbalMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <Input
+                  id="satVerbalMax"
+                  type="number"
+                  placeholder="Max"
+                  value={formData.satVerbalMax}
+                  onChange={(e) => handleInputChange("satVerbalMax", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BED8D4] pt-4">
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">SAT Math Range</h3>
+            <div className="space-y-2">
+              <div>
+                <label htmlFor="satMathMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <Input
+                  id="satMathMin"
+                  type="number"
+                  placeholder="Min"
+                  value={formData.satMathMin}
+                  onChange={(e) => handleInputChange("satMathMin", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="satMathMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <Input
+                  id="satMathMax"
+                  type="number"
+                  placeholder="Max"
+                  value={formData.satMathMax}
+                  onChange={(e) => handleInputChange("satMathMax", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#BED8D4] pt-4">
+            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">Tuition Range (In-State)</h3>
+            <div className="space-y-2">
+              <div>
+                <label htmlFor="tuitionMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <Input
+                  id="tuitionMin"
+                  type="number"
+                  placeholder="Min"
+                  value={formData.tuitionMin}
+                  onChange={(e) => handleInputChange("tuitionMin", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="tuitionMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <Input
+                  id="tuitionMax"
+                  type="number"
+                  placeholder="Max"
+                  value={formData.tuitionMax}
+                  onChange={(e) => handleInputChange("tuitionMax", e.target.value)}
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-red-500 text-center text-sm">{error}</p>
+        )}
+
+        <Button 
+          onClick={handleSubmit}
+          disabled={isLoading}
+          className="w-full bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+        >
+          {isLoading ? "Searching..." : "Search Colleges"}
+        </Button>
+      </div>
+    );
+  }
+
+  // Original card-based form for non-sidebar usage
   return (
     <div className="space-y-8">
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Find Your Perfect College</CardTitle>
+      <Card className="border-[#BED8D4] bg-white/90">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-xl font-bold text-[#2081C3]">Find Your Perfect College</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Type</Label>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="type" className="text-[#2081C3]">Type</Label>
                 <Select
                   value={formData.type}
-                  onValueChange={(value) => setFormData({ ...formData, type: value })}
+                  onValueChange={(value) => handleInputChange("type", value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="type" className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="any">Any</SelectItem>
+                  <SelectContent className="bg-white border-[#BED8D4]">
                     <SelectItem value="public">Public</SelectItem>
                     <SelectItem value="private">Private</SelectItem>
+                    <SelectItem value="community">Community College</SelectItem>
+                    <SelectItem value="liberal-arts">Liberal Arts</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>SAT Verbal Range</Label>
-                <div className="flex gap-4">
+              <div>
+                <Label htmlFor="tuitionMin" className="text-[#2081C3]">Tuition Range (In-State)</Label>
+                <div className="space-y-2">
+                  <div>
+                    <label htmlFor="tuitionMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                    <Input
+                      id="tuitionMin"
+                      type="number"
+                      placeholder="Min"
+                      value={formData.tuitionMin}
+                      onChange={(e) => handleInputChange("tuitionMin", e.target.value)}
+                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="tuitionMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                    <Input
+                      id="tuitionMax"
+                      type="number"
+                      placeholder="Max"
+                      value={formData.tuitionMax}
+                      onChange={(e) => handleInputChange("tuitionMax", e.target.value)}
+                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="satVerbalMin" className="text-[#2081C3]">SAT Verbal Range</Label>
+                <div className="grid grid-cols-2 gap-4">
                   <Input
-                    placeholder="Min"
+                    id="satVerbalMin"
                     type="number"
+                    placeholder="Min"
                     value={formData.satVerbalMin}
-                    onChange={(e) => setFormData({ ...formData, satVerbalMin: e.target.value })}
+                    onChange={(e) => handleInputChange("satVerbalMin", e.target.value)}
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
                   />
                   <Input
-                    placeholder="Max"
+                    id="satVerbalMax"
                     type="number"
+                    placeholder="Max"
                     value={formData.satVerbalMax}
-                    onChange={(e) => setFormData({ ...formData, satVerbalMax: e.target.value })}
+                    onChange={(e) => handleInputChange("satVerbalMax", e.target.value)}
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>SAT Math Range</Label>
-                <div className="flex gap-4">
+              <div>
+                <Label htmlFor="satMathMin" className="text-[#2081C3]">SAT Math Range</Label>
+                <div className="grid grid-cols-2 gap-4">
                   <Input
-                    placeholder="Min"
+                    id="satMathMin"
                     type="number"
+                    placeholder="Min"
                     value={formData.satMathMin}
-                    onChange={(e) => setFormData({ ...formData, satMathMin: e.target.value })}
+                    onChange={(e) => handleInputChange("satMathMin", e.target.value)}
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
                   />
                   <Input
-                    placeholder="Max"
+                    id="satMathMax"
                     type="number"
+                    placeholder="Max"
                     value={formData.satMathMax}
-                    onChange={(e) => setFormData({ ...formData, satMathMax: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tuition Range (In-State)</Label>
-                <div className="flex gap-4">
-                  <Input
-                    placeholder="Min"
-                    type="number"
-                    value={formData.tuitionMin}
-                    onChange={(e) => setFormData({ ...formData, tuitionMin: e.target.value })}
-                  />
-                  <Input
-                    placeholder="Max"
-                    type="number"
-                    value={formData.tuitionMax}
-                    onChange={(e) => setFormData({ ...formData, tuitionMax: e.target.value })}
+                    onChange={(e) => handleInputChange("satMathMax", e.target.value)}
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {error && (
-                <p className="text-red-500 text-center">{error}</p>
-              )}
-              <Button type="submit" className="w-full bg-[rgb(246,91,102)] hover:bg-[rgb(246,91,102)]/90" disabled={isLoading}>
-                {isLoading ? "Searching..." : "Search Colleges"}
-              </Button>
-            </div>
+            {error && (
+              <p className="text-red-500 text-center">{error}</p>
+            )}
+
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="w-full bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+            >
+              {isLoading ? "Searching..." : "Search Colleges"}
+            </Button>
           </form>
         </CardContent>
       </Card>
 
       {searchResults.length > 0 && (
-        <div className="w-full max-w-[1400px] mx-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr,500px] gap-6">
-            {/* Search Results Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl font-bold">
-                  Search Results ({searchResults.length} colleges found)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+        <>
+          <Card className="border-[#BED8D4] bg-white/90">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl font-bold text-[#2081C3]">Search Results</CardTitle>
+              <p className="text-[#2081C3]/80 text-sm">
+                Found {searchResults.length} colleges matching your criteria
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <ScrollArea className="h-[400px]">
                   <Table>
                     <TableHeader>
-                      <TableRow>
+                      <TableRow className="bg-[#F7F9F9] border-b border-[#BED8D4]">
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('name')}
                         >
-                          Name {getSortIcon('name')}
+                          <div className="flex items-center text-[#2081C3]">
+                            College Name {getSortIcon('name')}
+                          </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('state')}
                         >
-                          State {getSortIcon('state')}
+                          <div className="flex items-center text-[#2081C3]">
+                            State {getSortIcon('state')}
+                          </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('type')}
                         >
-                          Type {getSortIcon('type')}
+                          <div className="flex items-center text-[#2081C3]">
+                            Type {getSortIcon('type')}
+                          </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('tuition')}
                         >
-                          Tuition {getSortIcon('tuition')}
+                          <div className="flex items-center text-[#2081C3]">
+                            Tuition {getSortIcon('tuition')}
+                          </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('satVerbalAvg')}
                         >
-                          SAT Verbal Avg {getSortIcon('satVerbalAvg')}
+                          <div className="flex items-center text-[#2081C3]">
+                            SAT Verbal Avg {getSortIcon('satVerbalAvg')}
+                          </div>
                         </TableHead>
                         <TableHead 
-                          className="cursor-pointer hover:bg-gray-50"
+                          className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('satMathAvg')}
                         >
-                          SAT Math Avg {getSortIcon('satMathAvg')}
+                          <div className="flex items-center text-[#2081C3]">
+                            SAT Math Avg {getSortIcon('satMathAvg')}
+                          </div>
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -421,109 +720,109 @@ export function SearchForm() {
                       {currentResults.map((college) => (
                         <TableRow 
                           key={college.id} 
-                          className="cursor-pointer hover:bg-gray-100"
+                          className="cursor-pointer hover:bg-[#F7F9F9] border-b border-[#BED8D4]/50"
                           onClick={() => handleCollegeClick(college.id)}
                         >
-                          <TableCell className="font-medium text-[rgb(246,91,102)] hover:underline">
+                          <TableCell className="font-medium text-[#2081C3] hover:text-[#63D2FF]">
                             {college.name}
                           </TableCell>
-                          <TableCell>{college.state}</TableCell>
-                          <TableCell>{college.type}</TableCell>
-                          <TableCell>{formatCurrency(college.tuition)}</TableCell>
-                          <TableCell>{college.satVerbalAvg || 'N/A'}</TableCell>
-                          <TableCell>{college.satMathAvg || 'N/A'}</TableCell>
+                          <TableCell className="text-[#2081C3]/80">{college.state}</TableCell>
+                          <TableCell className="text-[#2081C3]/80">{college.type}</TableCell>
+                          <TableCell className="text-[#2081C3]/80">{formatCurrency(college.tuition)}</TableCell>
+                          <TableCell className="text-[#2081C3]/80">{college.satVerbalAvg || 'N/A'}</TableCell>
+                          <TableCell className="text-[#2081C3]/80">{college.satMathAvg || 'N/A'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                </ScrollArea>
 
-                  <div className="flex justify-between items-center">
-                    <div>
-                      Showing {startIndex + 1}-{Math.min(endIndex, searchResults.length)} of {searchResults.length} results
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="border-[rgb(246,91,102)] text-[rgb(246,91,102)] hover:bg-[rgb(246,91,102)]/10"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="border-[rgb(246,91,102)] text-[rgb(246,91,102)] hover:bg-[rgb(246,91,102)]/10"
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </Button>
-                    </div>
+                {totalPages > 1 && (
+                  <div className="flex justify-center space-x-2 mt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="border-[#BED8D4] text-[#2081C3] hover:bg-[#BED8D4]/20"
+                    >
+                      Previous
+                    </Button>
+                    <span className="flex items-center px-3 text-[#2081C3]">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="border-[#BED8D4] text-[#2081C3] hover:bg-[#BED8D4]/20"
+                    >
+                      Next
+                    </Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Chat Interface - Fixed Position */}
-            <div className="xl:sticky xl:top-8 h-fit">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold">Ask AI About These Colleges</CardTitle>
-                  <p className="text-sm text-gray-500">Ask questions about any of the colleges in your search results</p>
-                </CardHeader>
-                <CardContent>
+          {/* Chat Interface */}
+          <Card className="border-[#BED8D4] bg-white/90 mt-8">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl font-bold text-[#2081C3]">Ask AI About These Colleges</CardTitle>
+              <p className="text-[#2081C3]/80 text-sm">
+                Ask questions about any of the colleges in your search results
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <ScrollArea className="h-[400px] pr-4" data-testid="chat-scroll-area">
                   <div className="space-y-4">
-                    <ScrollArea className="h-[400px] pr-4" data-testid="chat-scroll-area">
-                      <div className="space-y-4">
-                        {messages.map((message, index) => (
-                          <div
-                            key={index}
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div
-                              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                                message.role === 'user'
-                                  ? 'bg-[rgb(246,91,102)] text-white'
-                                  : 'bg-gray-100 text-gray-900'
-                              }`}
-                            >
-                              <p 
-                                className="text-sm whitespace-pre-line"
-                                dangerouslySetInnerHTML={{ __html: message.content }}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                        <div ref={messagesEndRef} />
-                      </div>
-                    </ScrollArea>
-
-                    <form onSubmit={handleSearchChat} className="flex gap-2">
-                      <Input
-                        placeholder="Ask a question about these colleges..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        disabled={isSending}
-                        className="flex-1"
-                      />
-                      <Button 
-                        type="submit" 
-                        disabled={isSending || !newMessage.trim()}
-                        className="px-4 bg-[rgb(246,91,102)] hover:bg-[rgb(246,91,102)]/90"
+                    {messages.map((message, index) => (
+                      <div
+                        key={index}
+                        className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       >
-                        {isSending ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </form>
+                        <div
+                          className={`max-w-[80%] rounded-lg px-4 py-2 ${
+                            message.role === 'user'
+                              ? 'bg-[#2081C3] text-white'
+                              : 'bg-[#F7F9F9] border border-[#BED8D4] text-[#2081C3]'
+                          }`}
+                        >
+                          <p 
+                            className="text-sm whitespace-pre-line"
+                            dangerouslySetInnerHTML={{ __html: message.content }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    <div ref={messagesEndRef} />
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
+                </ScrollArea>
+
+                <form onSubmit={handleSearchChat} className="flex gap-2">
+                  <Input
+                    placeholder="Ask a question about these colleges..."
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    disabled={isSending}
+                    className="flex-1 border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                  />
+                  <Button 
+                    type="submit" 
+                    disabled={isSending || !newMessage.trim()}
+                    className="px-4 bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+                  >
+                    {isSending ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </Button>
+                </form>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   )

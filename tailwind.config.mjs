@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        primary: ["var(--font-primary)"],
+        mono: ["var(--font-mono)"],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
