@@ -359,15 +359,6 @@ export function SearchForm({ isSidebar = false }) {
               </div>
               <div className="flex items-center">
                 <Checkbox 
-                  id="type-trade" 
-                  checked={(formData.collegeTypes || []).includes('trade')}
-                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'trade', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="type-trade" className="ml-2 text-sm text-[#2081C3]/80">Trade/career</label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox 
                   id="type-other" 
                   checked={(formData.collegeTypes || []).includes('other')}
                   onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'other', checked)}
