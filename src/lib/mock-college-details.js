@@ -9,10 +9,6 @@ export const mockCollegeDetails = {
       nearestCity: "San Francisco"
     },
     type: "Private Research University",
-    rating: {
-      score: 4.8,
-      reviewCount: 1245
-    },
     ranking: {
       usNews: 6
     },
@@ -162,10 +158,6 @@ export const mockCollegeDetails = {
       nearestCity: "Boston"
     },
     type: "Private Ivy League University",
-    rating: {
-      score: 4.9,
-      reviewCount: 1532
-    },
     ranking: {
       usNews: 3
     },
@@ -314,10 +306,6 @@ export const mockCollegeDetails = {
       nearestCity: "Detroit"
     },
     type: "Public Research University",
-    rating: {
-      score: 4.6,
-      reviewCount: 1876
-    },
     ranking: {
       usNews: 23
     },
@@ -465,10 +453,6 @@ export const mockCollegeDetails = {
       state: "WA"
     },
     type: "Public Research University",
-    rating: {
-      score: 4.5,
-      reviewCount: 1654
-    },
     ranking: {
       usNews: 55
     },
