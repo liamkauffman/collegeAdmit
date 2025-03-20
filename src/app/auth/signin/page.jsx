@@ -44,7 +44,7 @@ export default function SignIn() {
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center mb-4">
             <ImageLogo size={50} />
-            <span className="text-2xl font-bold text-[#2081C3] ml-3">UniAI</span>
+            <span className="text-2xl font-bold text-[#2081C3] ml-3">CollegeAdmit.AI</span>
           </div>
           <h2 className="text-center text-3xl font-bold tracking-tight text-[#2081C3]">
             Sign in to your account
@@ -68,7 +68,7 @@ export default function SignIn() {
         )}
         
         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-[#78D5D7]/30">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6 auth-form" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
                 <label htmlFor="email-address" className="block text-sm font-medium text-[#2081C3]">
@@ -110,7 +110,7 @@ export default function SignIn() {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 rounded border-[#BED8D4] text-[#2081C3] focus:ring-[#63D2FF]"
+                  className="h-4 w-4"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-[#2081C3]">
                   Remember me

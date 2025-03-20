@@ -10,43 +10,157 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Add state for academic metrics
   const [academicMetrics, setAcademicMetrics] = useState({
-    gpa: '3.85',
-    satScore: '1420',
-    actScore: '32',
-    classRank: '15'
+    gpa: '',
+    satScore: '',
+    actScore: '',
+    classRank: ''
   });
 
   // Add state for academic notes and languages
   const [academicNotes, setAcademicNotes] = useState('');
   const [languages, setLanguages] = useState([
-    { language: 'English', proficiency: 'Native' },
-    { language: '', proficiency: '' }
+    { language: 'English', proficiency: 'Native' }
   ]);
 
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+    }
+  }, [status, router]);
+
+  // Add effect to fetch preferences
+  useEffect(() => {
+    const fetchPreferences = async () => {
+      if (status === 'authenticated') {
+        try {
+          const response = await fetch('/api/user/preferences');
+          if (!response.ok) {
+            throw new Error('Failed to fetch preferences');
+          }
+          const data = await response.json();
+          console.log("Data", data);
+          if (data.preferences) {
+            const prefs = data.preferences;
+            setAcademicMetrics({
+              gpa: prefs.gpa || '',
+              satScore: prefs.satScore || '',
+              actScore: prefs.actScore || '',
+              classRank: prefs.classRank || ''
+            });
+            setAcademicNotes(prefs.academicNotes || '');
+            setLanguages(prefs.languages || [{ language: 'English', proficiency: 'Native' }]);
+          }
+        } catch (err) {
+          console.error('Error fetching preferences:', err);
+          setError('Failed to load your academic profile');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchPreferences();
+  }, [status]);
+
   // Handler for input changes
-  const handleInputChange = (field, value) => {
-    setAcademicMetrics(prev => ({
-      ...prev,
+  const handleInputChange = async (field, value) => {
+    const newMetrics = {
+      ...academicMetrics,
       [field]: value
-    }));
+    };
+    setAcademicMetrics(newMetrics);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: {
+            ...newMetrics,
+            academicNotes,
+            languages
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save preferences');
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err);
+      // Optionally show an error message to the user
+    }
   };
 
   // Handler for notes changes
-  const handleNotesChange = (value) => {
+  const handleNotesChange = async (value) => {
     setAcademicNotes(value);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: {
+            ...academicMetrics,
+            academicNotes: value,
+            languages
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save preferences');
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err);
+      // Optionally show an error message to the user
+    }
   };
 
   // Handler for language changes
-  const handleLanguageChange = (index, field, value) => {
+  const handleLanguageChange = async (index, field, value) => {
     const updatedLanguages = [...languages];
     updatedLanguages[index] = {
       ...updatedLanguages[index],
       [field]: value
     };
     setLanguages(updatedLanguages);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: {
+            ...academicMetrics,
+            academicNotes,
+            languages: updatedLanguages
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save preferences');
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err);
+      // Optionally show an error message to the user
+    }
   };
 
   // Add a new language input field
@@ -61,12 +175,6 @@ export default function Dashboard() {
       setLanguages(updatedLanguages);
     }
   };
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    }
-  }, [status, router]);
 
   if (status === 'loading') {
     return (
@@ -140,118 +248,126 @@ export default function Dashboard() {
               </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Academic Metrics */}
-              <div>
-                <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
-                  <GraduationCap className="h-5 w-5 mr-2" />
-                  Academic Metrics
-                </h3>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-[#2081C3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-[#2081C3]/70">Loading your academic profile...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <p className="text-red-600 text-sm">{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="text-red-600 text-sm underline mt-2 hover:text-red-700"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Academic Metrics */}
+                <div>
+                  <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
+                    <GraduationCap className="h-5 w-5 mr-2" />
+                    Academic Metrics
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">GPA</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="text" 
+                          value={academicMetrics.gpa}
+                          onChange={(e) => handleInputChange('gpa', e.target.value)}
+                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        />
+                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 4.0</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">SAT Score</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="text" 
+                          value={academicMetrics.satScore}
+                          onChange={(e) => handleInputChange('satScore', e.target.value)}
+                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        />
+                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 1600</span>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">ACT Score</label>
+                      <div className="flex items-center">
+                        <input 
+                          type="text" 
+                          value={academicMetrics.actScore}
+                          onChange={(e) => handleInputChange('actScore', e.target.value)}
+                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        />
+                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 36</span>
+                      </div>
+                    </div>
+                    
+            
+                  </div>
+                </div>
                 
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">GPA</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="text" 
-                        value={academicMetrics.gpa}
-                        onChange={(e) => handleInputChange('gpa', e.target.value)}
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
-                      />
-                      <span className="text-xs text-[#2081C3]/60 ml-2">/ 4.0</span>
-                    </div>
-                  </div>
+                {/* Documents */}
+                <div>
+                  <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Documents
+                  </h3>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">SAT Score</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="text" 
-                        value={academicMetrics.satScore}
-                        onChange={(e) => handleInputChange('satScore', e.target.value)}
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
-                      />
-                      <span className="text-xs text-[#2081C3]/60 ml-2">/ 1600</span>
+                  <div className="space-y-4">
+                    <div className="border border-dashed border-[#BED8D4] rounded-lg p-6 bg-white/30 text-center">
+                      <Upload className="h-8 w-8 mx-auto text-[#2081C3]/60 mb-2" />
+                      <h4 className="text-sm font-medium text-[#2081C3] mb-1">Upload Resume</h4>
+                      <p className="text-xs text-[#2081C3]/60 mb-3">PDF, DOC or DOCX up to 5MB</p>
+                      <button className="bg-[#2081C3]/10 text-[#2081C3] px-4 py-2 rounded-md text-sm hover:bg-[#2081C3]/20 transition-colors">
+                        Select File
+                      </button>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">ACT Score</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="text" 
-                        value={academicMetrics.actScore}
-                        onChange={(e) => handleInputChange('actScore', e.target.value)}
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
-                      />
-                      <span className="text-xs text-[#2081C3]/60 ml-2">/ 36</span>
+                    
+                    <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
+                      <div className="flex items-center">
+                        <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
+                          <FileText className="h-5 w-5 text-[#2081C3]" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-[#2081C3]">Personal Statement.pdf</h4>
+                          <p className="text-xs text-[#2081C3]/60">Uploaded on May 15, 2023</p>
+                        </div>
+                        <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">Class Rank</label>
-                    <div className="flex items-center">
-                      <input 
-                        type="text" 
-                        value={academicMetrics.classRank}
-                        onChange={(e) => handleInputChange('classRank', e.target.value)}
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
-                      />
-                      <span className="text-xs text-[#2081C3]/60 ml-2">/ 250</span>
+                    
+                    <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
+                      <div className="flex items-center">
+                        <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
+                          <BookOpen className="h-5 w-5 text-[#2081C3]" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-[#2081C3]">Transcript.pdf</h4>
+                          <p className="text-xs text-[#2081C3]/60">Uploaded on May 10, 2023</p>
+                        </div>
+                        <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              
-              {/* Documents */}
-              <div>
-                <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Documents
-                </h3>
-                
-                <div className="space-y-4">
-                  <div className="border border-dashed border-[#BED8D4] rounded-lg p-6 bg-white/30 text-center">
-                    <Upload className="h-8 w-8 mx-auto text-[#2081C3]/60 mb-2" />
-                    <h4 className="text-sm font-medium text-[#2081C3] mb-1">Upload Resume</h4>
-                    <p className="text-xs text-[#2081C3]/60 mb-3">PDF, DOC or DOCX up to 5MB</p>
-                    <button className="bg-[#2081C3]/10 text-[#2081C3] px-4 py-2 rounded-md text-sm hover:bg-[#2081C3]/20 transition-colors">
-                      Select File
-                    </button>
-                  </div>
-                  
-                  <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
-                    <div className="flex items-center">
-                      <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
-                        <FileText className="h-5 w-5 text-[#2081C3]" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-[#2081C3]">Personal Statement.pdf</h4>
-                        <p className="text-xs text-[#2081C3]/60">Uploaded on May 15, 2023</p>
-                      </div>
-                      <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
-                    <div className="flex items-center">
-                      <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
-                        <BookOpen className="h-5 w-5 text-[#2081C3]" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-sm font-medium text-[#2081C3]">Transcript.pdf</h4>
-                        <p className="text-xs text-[#2081C3]/60">Uploaded on May 10, 2023</p>
-                      </div>
-                      <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
-                        <Edit className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
             
             {/* Academic Notes Section */}
             <div className="mt-8 border-t border-[#BED8D4] pt-8">
@@ -331,31 +447,6 @@ export default function Dashboard() {
                     )}
                   </div>
                 ))}
-              </div>
-            </div>
-            
-            {/* AI Recommendations Section */}
-            <div className="mt-8 border-t border-[#BED8D4] pt-8">
-              <div className="bg-[#2081C3]/10 rounded-xl p-6">
-                <div className="flex items-start">
-                  <div className="bg-[#2081C3] rounded-full p-2 mr-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-[#2081C3] mb-2">AI-Driven College Recommendations</h3>
-                    <p className="text-sm text-[#2081C3]/80 mb-4">
-                      Our AI will analyze your academic profile, interests, and language skills to provide personalized college recommendations.
-                    </p>
-                    <button className="bg-[#2081C3] text-white px-4 py-2 rounded-md text-sm hover:bg-[#2081C3]/90 transition-colors flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                      </svg>
-                      Generate Recommendations
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

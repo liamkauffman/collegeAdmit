@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CollegeCompare } from '@/components/college-comparison';
 
 export function CollegeCard({ college, type }) {
   const router = useRouter();
+  const [showDetails, setShowDetails] = useState(false);
 
   // Determine background color based on type
   const getBgColor = () => {
@@ -33,7 +35,7 @@ export function CollegeCard({ college, type }) {
 
   // Determine badge color based on acceptance designation
   const getBadgeColor = () => {
-    const designation = college.acceptance.designation;
+    const designation = college.acceptance?.designation;
     if (designation === 'Extreme Reach') return 'bg-red-500';
     if (designation === 'Reach') return 'bg-orange-500';
     if (designation === 'Target') return 'bg-green-500';
@@ -42,15 +44,27 @@ export function CollegeCard({ college, type }) {
   };
 
   // Handle click to navigate to college detail page
-  const handleCardClick = () => {
+  const handleCardClick = (e) => {
+    // Don't navigate if clicking on compare button
+    if (e.target.closest('.compare-button')) {
+      e.stopPropagation();
+      return;
+    }
+    
     // Extract college ID from name (for demo purposes)
-    const collegeId = college.name.toLowerCase().split(' ')[0];
+    const collegeId = college.name?.toLowerCase().split(' ')[0] || 'unknown';
+    router.push(`/college/${collegeId}`);
+  };
+  
+  // Handle selecting a similar college
+  const handleSelectSimilarCollege = (similarCollege) => {
+    const collegeId = similarCollege.name.toLowerCase().split(' ')[0] || 'unknown';
     router.push(`/college/${collegeId}`);
   };
 
   return (
     <div 
-      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${getTextColor()} h-full flex flex-col cursor-pointer`}
+      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${getTextColor()} h-full flex flex-col cursor-pointer group relative`}
       onClick={handleCardClick}
     >
       <div className="relative">
@@ -62,7 +76,7 @@ export function CollegeCard({ college, type }) {
         />
         <div className="absolute top-4 left-4 z-20">
           <span className={`${getBgColor()} px-3 py-1 rounded-full text-sm font-medium ${getTextColor()}`}>
-            {type === 'bestFit' ? 'Best Fit' : type.charAt(0).toUpperCase() + type.slice(1)}
+            {type === 'bestFit' ? 'Best Fit' : type?.charAt(0).toUpperCase() + type?.slice(1)}
           </span>
         </div>
         <h3 className="absolute bottom-4 left-4 text-white text-xl font-bold z-20 drop-shadow-md">
@@ -82,12 +96,12 @@ export function CollegeCard({ college, type }) {
         <div className="mb-3">
           <h4 className="text-sm font-medium text-gray-500 mb-1">Top Majors</h4>
           <div className="flex flex-wrap gap-1">
-            {college.topMajors.slice(0, 3).map((major, index) => (
+            {college.topMajors?.slice(0, 3).map((major, index) => (
               <span key={index} className="inline-block bg-gray-100 rounded-full px-2 py-1 text-xs">
                 {major}
               </span>
             ))}
-            {college.topMajors.length > 3 && (
+            {college.topMajors?.length > 3 && (
               <span className="inline-block bg-gray-100 rounded-full px-2 py-1 text-xs">
                 +{college.topMajors.length - 3} more
               </span>
@@ -99,10 +113,12 @@ export function CollegeCard({ college, type }) {
           <div>
             <h4 className="font-medium text-gray-500">Acceptance</h4>
             <div className="flex items-center mt-1">
-              <span className="font-bold">{college.acceptance.rate}</span>
-              <span className={`ml-2 ${getBadgeColor()} text-white text-xs px-1.5 py-0.5 rounded`}>
-                {college.acceptance.designation}
-              </span>
+              <span className="font-bold">{college.acceptance?.rate}</span>
+              {college.acceptance?.designation && (
+                <span className={`ml-2 ${getBadgeColor()} text-white text-xs px-1.5 py-0.5 rounded`}>
+                  {college.acceptance.designation}
+                </span>
+              )}
             </div>
           </div>
           
@@ -130,6 +146,14 @@ export function CollegeCard({ college, type }) {
             <p className="font-bold mt-1">{college.recruiting}</p>
           </div>
         </div>
+        
+        {/* Compare button - Always visible on mobile, appears on hover for desktop */}
+        <div className="mt-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 compare-button" onClick={(e) => e.stopPropagation()}>
+          <CollegeCompare 
+            college={college} 
+            onSelectCollege={handleSelectSimilarCollege}
+          />
+        </div>
       </div>
     </div>
   );
@@ -140,7 +164,7 @@ export function CollegeCardSection({ title, colleges, type }) {
     <div className="mb-8">
       <h2 className="text-2xl font-bold text-[#2081C3] mb-4">{title}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {colleges.map((college, index) => (
+        {colleges?.map((college, index) => (
           <CollegeCard key={index} college={college} type={type} />
         ))}
       </div>

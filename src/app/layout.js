@@ -1,6 +1,7 @@
 import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Define the primary font (Roboto)
 const primaryFont = Roboto({
@@ -17,17 +18,19 @@ const monoFont = Roboto_Mono({
 });
 
 export const metadata = {
-  title: "UniAI - College Admissions Assistant",
-  description: "Find your perfect college match with UniAI",
+  title: "CollegeAdmit.AI - College Admissions Assistant",
+  description: "Find your perfect college match with CollegeAdmit.AI",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${primaryFont.variable} ${monoFont.variable} font-primary antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

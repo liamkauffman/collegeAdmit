@@ -30,11 +30,23 @@ model User {
   savedColleges SavedCollege[]
   notes         CollegeNote[]
   applications  CollegeApplication[]
+  preferences   UserPreferences?
 }
 
 enum UserRole {
   USER
   ADMIN
+}
+
+// User Preferences model for storing onboarding data
+model UserPreferences {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  data      String   // JSON string of preferences
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // NextAuth.js models

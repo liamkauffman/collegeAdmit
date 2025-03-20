@@ -404,15 +404,6 @@ export function SearchForm({ isSidebar = false }) {
             <div className="space-y-2">
               <div className="flex items-center">
                 <Checkbox 
-                  id="online" 
-                  checked={(formData.onlineOptions || []).includes('online')}
-                  onCheckedChange={(checked) => handleCheckboxChange('onlineOptions', 'online', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="online" className="ml-2 text-sm text-[#2081C3]/80">Online</label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox 
                   id="campus" 
                   checked={(formData.onlineOptions || []).includes('campus')}
                   onCheckedChange={(checked) => handleCheckboxChange('onlineOptions', 'campus', checked)}
