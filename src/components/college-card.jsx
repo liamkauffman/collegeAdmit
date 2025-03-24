@@ -3,9 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollegeCompare } from '@/components/college-comparison';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, TrendingUp, Target, ShieldCheck } from "lucide-react";
+import { MapPin, Sparkles } from "lucide-react";
 
 export function CollegeCard({ college, type = "normal" }) {
   const router = useRouter();
@@ -33,160 +31,185 @@ export function CollegeCard({ college, type = "normal" }) {
     return `${(rate * 100).toFixed(1)}%`;
   };
 
-  // Get the background color based on card type
+  // Determine background color based on type
   const getBgColor = () => {
     switch (type) {
-      case "bestFit":
-        return "bg-gradient-to-br from-[#a8edea]/40 to-[#fed6e3]/40 dark:from-[#4068ec]/20 dark:to-[#78D5D7]/20 border-[#78D5D7]/40 dark:border-[#63D2FF]/20";
-      case "reach":
-        return "bg-gradient-to-br from-[#fad0c4]/30 to-[#ffd1ff]/30 dark:from-[#ff9a9e]/10 dark:to-[#fad0c4]/10 border-[#fad0c4]/40 dark:border-[#fad0c4]/20";
-      case "target":
-        return "bg-gradient-to-br from-[#d4fc79]/30 to-[#96e6a1]/30 dark:from-[#d4fc79]/10 dark:to-[#96e6a1]/10 border-[#96e6a1]/40 dark:border-[#96e6a1]/20";
-      case "safety":
-        return "bg-gradient-to-br from-[#84fab0]/30 to-[#8fd3f4]/30 dark:from-[#84fab0]/10 dark:to-[#8fd3f4]/10 border-[#8fd3f4]/40 dark:border-[#8fd3f4]/20";
+      case 'bestFit':
+      case 'bestfit':
+        return 'bg-gradient-to-br from-[#2081C3] to-[#63D2FF]';
+      case 'reach':
+        return 'bg-gradient-to-br from-[#FF6B6B] to-[#FF9E9E]';
+      case 'target':
+        return 'bg-gradient-to-br from-[#4CAF50] to-[#8BC34A]';
+      case 'safety':
+        return 'bg-gradient-to-br from-[#FFC107] to-[#FFE082]';
       default:
-        return "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800";
+        return 'bg-gradient-to-br from-[#78D5D7] to-[#BED8D4]';
     }
   };
 
-  // Get the type icon
-  const getIcon = () => {
+  // Determine text color based on type
+  const getTextColor = () => {
     switch (type) {
-      case "bestFit":
-        return <Sparkles className="h-5 w-5 text-[#4068ec] dark:text-[#63D2FF]" />;
-      case "reach":
-        return <TrendingUp className="h-5 w-5 text-red-500 dark:text-red-400" />;
-      case "target":
-        return <Target className="h-5 w-5 text-green-500 dark:text-green-400" />;
-      case "safety":
-        return <ShieldCheck className="h-5 w-5 text-blue-500 dark:text-blue-400" />;
+      case 'bestFit':
+      case 'bestfit':
+      case 'reach':
+        return 'text-white';
       default:
-        return null;
+        return 'text-gray-800';
     }
   };
 
-  // Get the type label
+  // Determine badge color based on acceptance rate
+  const getBadgeColor = () => {
+    if (!college.acceptance_rate) return 'bg-gray-500';
+    const rate = college.acceptance_rate * 100;
+    if (rate < 15) return 'bg-red-500';
+    if (rate < 30) return 'bg-orange-500';
+    if (rate < 50) return 'bg-green-500';
+    return 'bg-blue-500';
+  };
+
+  // Get designation based on acceptance rate
+  const getDesignation = () => {
+    if (!college.acceptance_rate) return null;
+    const rate = college.acceptance_rate * 100;
+    if (rate < 15) return 'Extreme Reach';
+    if (rate < 30) return 'Reach';
+    if (rate < 50) return 'Target';
+    return 'Likely';
+  };
+
+  // Display label for college type
   const getTypeLabel = () => {
-    switch (type) {
-      case "bestFit":
-        return "Best Fit";
-      case "reach":
-        return "Reach";
-      case "target":
-        return "Target";
-      case "safety":
-        return "Safety";
+    const collegeType = type.toLowerCase();
+    switch (collegeType) {
+      case 'bestfit':
+        return 'Best Fit';
       default:
-        return "";
+        return collegeType.charAt(0).toUpperCase() + collegeType.slice(1);
     }
   };
 
   // Handle click to navigate to college detail page
-  const handleCardClick = () => {
+  const handleCardClick = (e) => {
+    // Don't navigate if clicking on compare button
+    if (e.target.closest('.compare-button')) {
+      e.stopPropagation();
+      return;
+    }
+    
+    // Navigate using the actual college ID
     router.push(`/college/${college.id}`);
   };
   
   // Handle selecting a similar college
   const handleSelectSimilarCollege = (similarCollege) => {
-    const collegeId = similarCollege.name.toLowerCase().split(' ')[0] || 'unknown';
+    // Use the actual college ID for navigation
+    const collegeId = similarCollege.id;
+    if (!collegeId) {
+      console.error("Missing college ID for navigation", similarCollege);
+      return;
+    }
     router.push(`/college/${collegeId}`);
   };
 
-  // Handle category from backend which might use snake_case instead of camelCase
-  const getCategory = () => {
-    return college.category || college.category_type;
-  };
+  // Default image if none is provided
+  const defaultImage = "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80";
 
   return (
-    <Card 
-      className={`overflow-hidden ${getBgColor()} hover:shadow-lg transition-all border cursor-pointer`}
+    <div 
+      className={`rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 h-full flex flex-col cursor-pointer group relative`}
       onClick={handleCardClick}
     >
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="text-xl md:text-2xl font-bold text-[#4068ec] dark:text-[#63D2FF]">
-              {college.name}
-            </CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-              {college.state} • {college.type}
-            </CardDescription>
-          </div>
-          {getTypeLabel() && (
-            <Badge 
-              variant="outline" 
-              className={`flex items-center gap-1 px-2 py-1 ${
-                type === "bestFit" 
-                  ? "bg-[#4068ec]/10 text-[#4068ec] border-[#4068ec]/30 dark:bg-[#63D2FF]/10 dark:text-[#63D2FF] dark:border-[#63D2FF]/30" 
-                  : type === "reach" 
-                  ? "bg-red-100 text-red-500 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-700/30"
-                  : type === "target"
-                  ? "bg-green-100 text-green-500 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700/30"
-                  : "bg-blue-100 text-blue-500 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-700/30"
-              }`}
-            >
-              {getIcon()}
-              <span>{getTypeLabel()}</span>
-            </Badge>
-          )}
+      <div className="relative">
+        <div className="absolute inset-0 bg-black/30 z-10"></div>
+        <img 
+          src={college.image || defaultImage} 
+          alt={college.name} 
+          className="w-full h-48 object-cover"
+        />
+        <div className="absolute top-4 left-4 z-20">
+          <span className={`${getBgColor()} px-3 py-1 rounded-full text-sm font-medium ${getTextColor()}`}>
+            {getTypeLabel()}
+          </span>
         </div>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-2 text-sm mt-2">
-          <div>
-            <div className="text-gray-500 dark:text-gray-400 text-xs">Acceptance Rate</div>
-            <div className="font-medium">{formatAcceptanceRate(college.acceptance_rate)}</div>
+        <h3 className="absolute bottom-4 left-4 text-white text-xl font-bold z-20 drop-shadow-md">
+          {college.name}
+        </h3>
+      </div>
+      
+      <div className="p-4 bg-white text-gray-800 flex-1 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center mb-2">
+            <MapPin className="h-5 w-5 text-gray-500 mr-2" />
+            <span>{college.state} • {college.type}</span>
           </div>
-          <div>
-            <div className="text-gray-500 dark:text-gray-400 text-xs">Estimated Cost</div>
-            <div className="font-medium">{formatCost(college.cost)}</div>
-          </div>
+          
           {college.top_majors && college.top_majors.length > 0 && (
-            <div className="col-span-2 md:col-span-1">
-              <div className="text-gray-500 dark:text-gray-400 text-xs">Top Majors</div>
-              <div className="font-medium flex flex-wrap gap-1 mt-1">
-                {college.top_majors.slice(0, 2).map((major, index) => (
-                  <Badge 
-                    key={index} 
-                    variant="outline" 
-                    className="text-[10px] py-0 px-1.5 bg-gray-100 dark:bg-gray-800/50"
-                  >
+            <div className="mb-2">
+              <h4 className="text-sm font-medium text-gray-500 mb-1">Top Majors</h4>
+              <div className="flex flex-wrap gap-1">
+                {college.top_majors.slice(0, 3).map((major, index) => (
+                  <span key={index} className="inline-block bg-gray-100 rounded-full px-2 py-1 text-xs">
                     {major.name}
-                  </Badge>
+                  </span>
                 ))}
-                {college.top_majors.length > 2 && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">+{college.top_majors.length - 2} more</span>
+                {college.top_majors.length > 3 && (
+                  <span className="inline-block bg-gray-100 rounded-full px-2 py-1 text-xs">
+                    +{college.top_majors.length - 3} more
+                  </span>
                 )}
               </div>
             </div>
           )}
-        </div>
-
-        {college.recruiting_info && (
-          <div className="mt-4 text-sm border-t border-gray-100 dark:border-gray-800 pt-3">
-            <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">Recruiting Info</div>
-            <div className="text-gray-700 dark:text-gray-300 text-xs">{college.recruiting_info}</div>
-          </div>
-        )}
-
-        {college.ai_insight && (
-          <div className="mt-4 bg-gradient-to-r from-[#4068ec]/5 to-[#78D5D7]/5 dark:from-[#4068ec]/10 dark:to-[#78D5D7]/10 p-3 rounded-md">
-            <div className="flex items-center gap-1 text-[#4068ec] dark:text-[#63D2FF] text-xs font-medium mb-1">
-              <Sparkles className="h-3 w-3" />
-              <span>AI Insight</span>
+          
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <h4 className="font-medium text-gray-500">Acceptance</h4>
+              <div className="flex items-center mt-1">
+                <span className="font-bold">{formatAcceptanceRate(college.acceptance_rate)}</span>
+                {getDesignation() && (
+                  <span className={`ml-2 ${getBadgeColor()} text-white text-xs px-1.5 py-0.5 rounded`}>
+                    {getDesignation()}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300">{college.ai_insight}</p>
+            
+            <div>
+              <h4 className="font-medium text-gray-500">Cost</h4>
+              <p className="font-bold mt-1">{formatCost(college.cost)}</p>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {college.ai_insight && (
+            <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md">
+              <div className="flex items-center gap-1 text-blue-600 text-xs font-medium">
+                <Sparkles className="h-3 w-3" />
+                <span>AI Insight</span>
+              </div>
+              <p className="text-sm text-gray-700">{college.ai_insight}</p>
+            </div>
+          )}
+        </div>
+        
+        {/* Compare button - Always visible */}
+        <div className="mt-3 compare-button" onClick={(e) => e.stopPropagation()}>
+          <CollegeCompare 
+            college={college} 
+            onSelectCollege={handleSelectSimilarCollege}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function CollegeCardSection({ title, colleges, type }) {
   return (
     <div className="mb-8">
-      <h2 className="text-2xl font-bold text-[#4068ec] mb-4">{title}</h2>
+      <h2 className="text-2xl font-bold text-[#2081C3] mb-4">{title}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {colleges?.map((college, index) => (
           <CollegeCard key={index} college={college} type={type} />

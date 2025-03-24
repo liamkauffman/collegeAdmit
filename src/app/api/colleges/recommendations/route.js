@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // POST handler to get college recommendations
 export async function POST(request) {
@@ -10,7 +10,14 @@ export async function POST(request) {
     const { initial_query, follow_up_answers, user_profile } = body;
     
     // Get the user's session
-    const session = await getServerSession(authOptions);
+    let session;
+    try {
+      session = await getServerSession(authOptions);
+    } catch (sessionError) {
+      console.error("Error getting session:", sessionError);
+      // Continue without session
+      session = null;
+    }
     
     // Initialize the user context with any user_profile passed in the request
     let userProfile = user_profile || {};

@@ -17,69 +17,80 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Default college images for when the API doesn't provide images
+const DEFAULT_COLLEGE_IMAGES = [
+  "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1532649538693-f3a2ec1bf8bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1512813195386-6cf811ad3542?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80",
+  "https://images.unsplash.com/photo-1554558544-7873221d9080?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
+];
+
 export function CollegeCompare({ college, onSelectCollege }) {
   const [isLoading, setIsLoading] = useState(false);
   const [similarColleges, setSimilarColleges] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCollegeIndex, setSelectedCollegeIndex] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [error, setError] = useState(null);
   
   const handleCompareClick = async () => {
     setIsLoading(true);
+    setError(null);
     
     try {
-      // Simulating API call with setTimeout for now
-      // In production, this would be replaced with an actual API call
-      setTimeout(() => {
-        // Mock data - replace this with actual API call
-        const mockSimilarColleges = [
-          {
-            id: "similar1",
-            name: college.name ? college.name.replace("University", "College") : "Similar College 1",
-            state: college.state || "NY",
-            type: college.type || "Private Liberal Arts College",
-            acceptanceRate: (college.acceptanceRate ? college.acceptanceRate * 1.2 : 0.35),
-            tuition: college.tuition ? Math.round(college.tuition * 0.8) : 35000,
-            satMathAvg: college.satMathAvg ? Math.min(800, college.satMathAvg + 30) : 680,
-            satVerbalAvg: college.satVerbalAvg ? Math.min(800, college.satVerbalAvg + 20) : 690,
-            similarityScore: 92,
-            matchReason: "Academic Profile, Location, Size",
-            image: "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-          },
-          {
-            id: "similar2",
-            name: college.name ? "New " + college.name : "Similar College 2",
-            state: college.state || "MA",
-            type: college.type || "Public Research University",
-            acceptanceRate: (college.acceptanceRate ? college.acceptanceRate * 1.5 : 0.42),
-            tuition: college.tuition ? Math.round(college.tuition * 0.7) : 32000,
-            satMathAvg: college.satMathAvg ? Math.max(400, college.satMathAvg - 40) : 630,
-            satVerbalAvg: college.satVerbalAvg ? Math.max(400, college.satVerbalAvg - 30) : 650,
-            similarityScore: 87,
-            matchReason: "Cost, Academic Programs, Student Life",
-            image: "https://images.unsplash.com/photo-1532649538693-f3a2ec1bf8bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-          },
-          {
-            id: "similar3",
-            name: college.name ? college.name.replace("University", "Institute") : "Similar College 3",
-            state: college.state ? (college.state === "NY" ? "CT" : "NH") : "CA",
-            type: college.type || "Private Research University",
-            acceptanceRate: (college.acceptanceRate ? college.acceptanceRate * 0.9 : 0.28),
-            tuition: college.tuition ? Math.round(college.tuition * 1.1) : 42000,
-            satMathAvg: college.satMathAvg ? Math.min(800, college.satMathAvg + 50) : 720,
-            satVerbalAvg: college.satVerbalAvg ? Math.min(800, college.satVerbalAvg + 40) : 710,
-            similarityScore: 81,
-            matchReason: "Research Opportunities, Career Outcomes",
-            image: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80"
-          }
-        ];
+      // Make a real API call to the compare endpoint
+      const response = await fetch('/api/colleges/compare', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          college_id: college.id,
+          limit: 3 // Request 3 similar colleges
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch similar colleges');
+      }
+      
+      const data = await response.json();
+      
+      // Transform the data to match our component's expected format
+      const transformedColleges = data.similar_colleges.map((college, index) => {
+        // Determine which tuition to use - prefer out-of-state if available
+        const tuitionValue = college.tuition?.out_of_state || 
+                             college.tuition?.in_state || 
+                             40000; // Default fallback
         
-        setSimilarColleges(mockSimilarColleges);
-        setIsLoading(false);
-      }, 1500);
+        // Extract SAT scores from nested structure
+        const satMathAvg = college.test_scores?.sat_math?.percentile_50th || 650;
+        const satVerbalAvg = college.test_scores?.sat_reading_writing?.percentile_50th || 650;
+        
+        return {
+          id: college.id,
+          name: college.name,
+          state: college.state || "",
+          type: college.type || "University",
+          acceptanceRate: college.acceptance_rate || 0.5,
+          tuition: tuitionValue,
+          satMathAvg: satMathAvg,
+          satVerbalAvg: satVerbalAvg,
+          similarityScore: college.similarity_score,
+          matchReason: college.match_reason,
+          // Assign a default image since the backend doesn't provide one
+          image: DEFAULT_COLLEGE_IMAGES[index % DEFAULT_COLLEGE_IMAGES.length]
+        };
+      });
+      
+      setSimilarColleges(transformedColleges);
+      setIsLoading(false);
       
     } catch (error) {
       console.error("Error fetching similar colleges:", error);
+      setError(error.message);
       setIsLoading(false);
     }
   };
@@ -143,6 +154,30 @@ export function CollegeCompare({ college, onSelectCollege }) {
                   <p className="text-lg text-gray-600 dark:text-gray-400 animate-pulse mt-4">
                     Finding similar colleges...
                   </p>
+                </div>
+              </motion.div>
+            ) : error ? (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center h-[40vh]"
+              >
+                <div className="text-center p-6 max-w-md">
+                  <div className="text-red-500 text-5xl mb-4">⚠️</div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    Unable to Find Similar Colleges
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    {error || "There was an error retrieving similar colleges. Please try again later."}
+                  </p>
+                  <Button 
+                    onClick={handleCompareClick}
+                    className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white"
+                  >
+                    Try Again
+                  </Button>
                 </div>
               </motion.div>
             ) : showDetails && selectedCollegeIndex !== null ? (
@@ -249,6 +284,24 @@ export function CollegeCompare({ college, onSelectCollege }) {
                       </Button>
                     </div>
                   </div>
+                </div>
+              </motion.div>
+            ) : similarColleges.length === 0 && !isLoading ? (
+              <motion.div
+                key="no-results"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center justify-center h-[40vh]"
+              >
+                <div className="text-center p-6 max-w-md">
+                  <div className="text-gray-400 text-5xl mb-4">🔍</div>
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">
+                    No Similar Colleges Found
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-6">
+                    We couldn't find any colleges similar to {college.name}. Try again later or explore other options.
+                  </p>
                 </div>
               </motion.div>
             ) : (

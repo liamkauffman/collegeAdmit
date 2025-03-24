@@ -35,18 +35,18 @@ export default function NavigationBar() {
 
   return (
     <div className="border-b border-[#BED8D4] dark:border-gray-700 bg-[#F7F9F9] dark:bg-gray-900 shadow-sm">
-      <div className="flex h-16 items-center px-4 max-w-7xl mx-auto">
-        <div className="mr-4 flex items-center">
+      <div className="flex h-16 items-center px-0 max-w-full w-full">
+        <div className="flex items-center pl-4 md:pl-6">
           <Link href="/" className="flex items-center">
-            <div className="mr-2 flex items-center justify-center">
-              <SvgLogo />
+            <div className="flex items-center justify-center">
+              <SvgLogo size={32} />
             </div>
-            <span className="text-xl font-bold text-[#4068ec] dark:text-[#63D2FF]">CollegeAdmit.AI</span>
+            <span className="ml-2 text-xl font-bold text-[#4068ec] dark:text-[#63D2FF]">CollegeAdmit.AI</span>
           </Link>
         </div>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 mx-6">
+        <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 ml-8 mx-6">
           {navItems.map((item) => (
             <Button
               key={item.href}
@@ -145,21 +145,23 @@ export default function NavigationBar() {
                     </button>
                   </div>
                 ) : (
-                  <SheetClose asChild>
-                    <Link 
-                      href="/auth/signin" 
-                      className="flex items-center justify-center p-2 rounded-md bg-[#4068ec]/10 hover:bg-[#4068ec]/20 dark:bg-[#63D2FF]/10 dark:hover:bg-[#63D2FF]/20 text-[#4068ec] dark:text-[#63D2FF] font-medium"
-                    >
-                      Sign In
-                    </Link>
-                  </SheetClose>
+                  <>
+                    <SheetClose asChild>
+                      <Link 
+                        href="/auth/signin" 
+                        className="flex items-center justify-center p-2 rounded-md bg-[#4068ec]/10 hover:bg-[#4068ec]/20 dark:bg-[#63D2FF]/10 dark:hover:bg-[#63D2FF]/20 text-[#4068ec] dark:text-[#63D2FF] font-medium"
+                      >
+                        Sign In
+                      </Link>
+                    </SheetClose>
+                  </>
                 )}
               </div>
             </div>
           </SheetContent>
         </Sheet>
         
-        <div className="ml-auto flex items-center space-x-2 md:space-x-4">
+        <div className="ml-auto flex items-center space-x-2 md:space-x-4 pr-4 md:pr-6">
           {/* Desktop Profile and Settings */}
           <div className="hidden md:flex items-center space-x-2">
             {isAuthenticated ? (

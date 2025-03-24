@@ -11,6 +11,7 @@ import { API_URL } from "@/config"
 import NavigationBar from '@/components/navigation-bar'
 import { mockCollegeDetails } from '@/lib/mock-college-details'
 import { motion, AnimatePresence } from "framer-motion"
+import { fetchCollegeDetails } from '@/lib/api'
 
 export default function CollegePage() {
   const params = useParams()
@@ -38,18 +39,139 @@ export default function CollegePage() {
   }
 
   useEffect(() => {
-    // In a real app, we would fetch the college data based on the ID
-    // For now, we'll use mock data
-    const collegeId = params.id
+    // Fetch the college data from the API
+    const collegeId = params.id;
+    setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      // Find the college in our mock data
-      const foundCollege = mockCollegeDetails[collegeId] || mockCollegeDetails.stanford // Default to Stanford if not found
-      setCollege(foundCollege)
-      setLoading(false)
-    }, 500)
-  }, [params.id])
+    const getCollegeDetails = async () => {
+      try {
+        // Check if this is a test request (via URL parameter)
+        const isTestMode = new URLSearchParams(window.location.search).get('test') === 'true';
+        
+        const collegeData = await fetchCollegeDetails(collegeId);
+        
+        // Transform the API response to match expected format in UI
+        const transformedData = {
+          id: collegeData.id,
+          name: collegeData.name,
+          type: collegeData.type,
+          // Default hero image if none provided
+          heroImage: collegeData.heroImage || "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+          location: {
+            city: collegeData.location?.city || collegeData.quality_of_life?.location?.nearest_city || "Unknown",
+            state: collegeData.state || "Unknown",
+            nearestCity: collegeData.quality_of_life?.location?.nearest_city
+          },
+          ranking: {
+            usNews: collegeData.rankings?.us_news || "N/A"
+          },
+          size: {
+            category: getSizeCategory(collegeData.size?.total_enrollment),
+            students: collegeData.size?.total_enrollment || 0
+          },
+          // Extract major names from top_majors array of objects
+          majors: collegeData.top_majors?.map(major => major.name) || [],
+          academics: {
+            gpaRange: { min: "N/A", max: "N/A" },
+            satRange: { 
+              min: collegeData.admissions?.test_scores?.sat_reading_writing?.percentile_25th || "N/A", 
+              max: collegeData.admissions?.test_scores?.sat_reading_writing?.percentile_75th || "N/A"
+            },
+            actRange: { 
+              min: collegeData.admissions?.test_scores?.act_composite?.percentile_25th || "N/A", 
+              max: collegeData.admissions?.test_scores?.act_composite?.percentile_75th || "N/A"
+            }
+          },
+          acceptance: {
+            rate: formatPercentage(collegeData.acceptance_rate * 100) || "N/A",
+            internationalStudents: formatPercentage(collegeData.international_student_percentage) || "N/A",
+            yourChances: getAcceptanceCategory(collegeData.acceptance_rate)
+          },
+          qualityOfLife: {
+            factors: [
+              { name: "Campus Facilities", score: Math.round(collegeData.quality_of_life?.campus_facilities?.quality_rating * 10) / 10 || 0 },
+              { name: "Housing", score: Math.round(collegeData.quality_of_life?.housing?.quality_rating * 10) / 10 || 0 },
+              { name: "Dining", score: Math.round(collegeData.quality_of_life?.dining?.quality_rating * 10) / 10 || 0 },
+              { name: "Safety", score: Math.round(collegeData.quality_of_life?.safety?.campus_safety_rating * 10) / 10 || 0 },
+              { name: "Social Life", score: Math.round(collegeData.quality_of_life?.social_life?.quality_rating * 10) / 10 || 0 }
+            ],
+            description: `${collegeData.name} is located in a ${collegeData.quality_of_life?.location?.setting || "rural"} setting, ${collegeData.quality_of_life?.location?.distance_to_nearest_city ? `${collegeData.quality_of_life?.location?.distance_to_nearest_city} miles from ${collegeData.quality_of_life?.location?.nearest_city}` : ''}.`
+          },
+          costs: {
+            items: [
+              { 
+                name: "Tuition (In-State)", 
+                inState: formatCurrency(collegeData.undergraduate_tuition?.in_state || 0), 
+                outOfState: formatCurrency(collegeData.undergraduate_tuition?.out_of_state || 0) 
+              },
+              { 
+                name: "Room & Board", 
+                inState: formatCurrency(collegeData.cost_of_attendance?.on_campus_housing || 0), 
+                outOfState: formatCurrency(collegeData.cost_of_attendance?.on_campus_housing || 0) 
+              },
+              { 
+                name: "Books & Supplies", 
+                inState: formatCurrency(collegeData.cost_of_attendance?.books_and_supplies || 0), 
+                outOfState: formatCurrency(collegeData.cost_of_attendance?.books_and_supplies || 0) 
+              },
+              { 
+                name: "Other Expenses", 
+                inState: formatCurrency(collegeData.cost_of_attendance?.on_campus_other || 0), 
+                outOfState: formatCurrency(collegeData.cost_of_attendance?.on_campus_other || 0) 
+              }
+            ],
+            total: {
+              inState: formatCurrency(
+                (collegeData.undergraduate_tuition?.in_state || 0) + 
+                (collegeData.cost_of_attendance?.on_campus_housing || 0) + 
+                (collegeData.cost_of_attendance?.books_and_supplies || 0) + 
+                (collegeData.cost_of_attendance?.on_campus_other || 0)
+              ),
+              outOfState: formatCurrency(
+                (collegeData.undergraduate_tuition?.out_of_state || 0) + 
+                (collegeData.cost_of_attendance?.on_campus_housing || 0) + 
+                (collegeData.cost_of_attendance?.books_and_supplies || 0) + 
+                (collegeData.cost_of_attendance?.on_campus_other || 0)
+              )
+            },
+            notes: `Financial aid may be available to eligible students. ${collegeData.tuition_plans?.includes("Tuition payment plan") ? "A tuition payment plan is available." : ""}`
+          },
+          recruiting: {
+            employmentRate: formatPercentage(collegeData.employment_outcomes?.employment_rate) || "N/A",
+            startingSalary: formatCurrency(collegeData.employment_outcomes?.average_starting_salary) || "N/A",
+            salaryAfterYears: {
+              years: "5",
+              amount: formatCurrency(collegeData.employment_outcomes?.salary_after_5_years) || "N/A"
+            },
+            topIndustries: collegeData.employment_outcomes?.top_industries?.map(industry => ({
+              name: industry.name,
+              percentage: formatPercentage(industry.percentage)
+            })) || [],
+            graduateSchool: collegeData.graduate_school_outcomes ? {
+              rate: formatPercentage(collegeData.graduate_school_outcomes.attendance_rate)
+            } : null
+          }
+        };
+        
+        setCollege(transformedData);
+      } catch (error) {
+        console.error("Error fetching college details:", error);
+        setError("Failed to load college details");
+        
+        // Fallback to mock data in development environment, but not in test mode
+        if (process.env.NODE_ENV === 'development' && !isTestMode) {
+          console.log("Falling back to mock data in development mode");
+          const fallbackData = mockCollegeDetails[collegeId] || mockCollegeDetails.stanford;
+          setCollege(fallbackData);
+          setError(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getCollegeDetails();
+  }, [params.id]);
 
   useEffect(() => {
     scrollToBottom()
@@ -92,25 +214,46 @@ export default function CollegePage() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Helper functions for transforming data
   const formatCurrency = (amount) => {
+    if (!amount && amount !== 0) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       maximumFractionDigits: 0,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const formatPercentage = (value) => {
-    if (!value && value !== 0) return 'N/A'
+    if (!value && value !== 0) return 'N/A';
     return new Intl.NumberFormat('en-US', {
       style: 'percent',
       maximumFractionDigits: 1,
-    }).format(value / 100)
-  }
+    }).format(value / 100);
+  };
 
   const formatNumber = (value) => {
-    return new Intl.NumberFormat('en-US').format(value)
-  }
+    if (!value && value !== 0) return 'N/A';
+    return new Intl.NumberFormat('en-US').format(value);
+  };
+
+  // Helper function to categorize college size
+  const getSizeCategory = (size) => {
+    if (!size) return "Unknown";
+    if (size < 2000) return "Small";
+    if (size < 10000) return "Medium";
+    if (size < 20000) return "Large";
+    return "Very Large";
+  };
+
+  // Helper function to categorize acceptance rate
+  const getAcceptanceCategory = (rate) => {
+    if (!rate) return "Unknown";
+    if (rate < 0.10) return "Extreme Reach";
+    if (rate < 0.30) return "Reach";
+    if (rate < 0.60) return "Target";
+    return "Safety";
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault()
@@ -199,7 +342,39 @@ export default function CollegePage() {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-[#4068ec] text-xl">College not found</div>
+          <div className="bg-white rounded-lg shadow-md max-w-2xl w-full p-6 m-4">
+            <h2 className="text-2xl font-bold text-red-600 mb-4">Error Loading College</h2>
+            <p className="text-gray-700 mb-4">{error}</p>
+            
+            {/* Only show detailed debug info in test mode */}
+            {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('test') === 'true' && (
+              <div className="mt-4 p-4 bg-gray-100 rounded-md">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Debug Information</h3>
+                <p className="text-sm text-gray-700 mb-2">
+                  This information is shown because test mode is active.
+                </p>
+                <ul className="list-disc ml-5 text-sm text-gray-700">
+                  <li>College ID: {params.id}</li>
+                  <li>API URL: {`${API_URL}/api/colleges/${params.id}`}</li>
+                  <li>Test Mode: Active</li>
+                </ul>
+                <div className="mt-4">
+                  <Button 
+                    onClick={() => router.push('/')}
+                    variant="outline"
+                    className="mr-2"
+                  >
+                    Go Home
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </main>
       </div>
     )
@@ -304,19 +479,23 @@ export default function CollegePage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-[#F7F9F9] p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Type</h3>
-                <p className="font-semibold text-gray-800">{college.type}</p>
+                <p className="font-semibold text-gray-800">{college.type || "N/A"}</p>
               </div>
               
               <div className="bg-[#F7F9F9] p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-500 mb-1">US News Ranking</h3>
-                <p className="font-semibold text-gray-800">#{college.ranking.usNews}</p>
+                <p className="font-semibold text-gray-800">#{college.ranking?.usNews || "N/A"}</p>
               </div>
               
               <div className="bg-[#F7F9F9] p-4 rounded-lg">
                 <h3 className="text-sm font-medium text-gray-500 mb-1">Size</h3>
                 <div>
-                  <p className="font-semibold text-gray-800">{college.size.category}</p>
-                  <p className="text-sm text-gray-500">{college.size.students.toLocaleString()} students</p>
+                  <p className="font-semibold text-gray-800">{college.size?.category || "N/A"}</p>
+                  <p className="text-sm text-gray-500">
+                    {typeof college.size?.students === 'number' 
+                      ? college.size.students.toLocaleString() + " students"
+                      : "N/A"}
+                  </p>
                 </div>
               </div>
             </div>
@@ -452,15 +631,15 @@ export default function CollegePage() {
             <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quality of Life</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {college.qualityOfLife.factors.map((factor, index) => (
+              {college.qualityOfLife?.factors?.map((factor, index) => (
                 <div key={index} className="bg-[#F7F9F9] p-4 rounded-lg">
                   <h3 className="text-sm font-medium text-gray-500 mb-1">{factor.name}</h3>
                   <div className="flex items-center">
-                    <span className="font-bold text-gray-800 mr-2">{factor.score}/10</span>
+                    <span className="font-bold text-gray-800 mr-2">{factor.score || "N/A"}/10</span>
                     <div className="w-full bg-gray-200 rounded-full h-2 flex-1">
                       <div 
                         className="bg-[#4068ec] h-2 rounded-full" 
-                        style={{ width: `${(factor.score / 10) * 100}%` }}
+                        style={{ width: `${((factor.score || 0) / 10) * 100}%` }}
                       ></div>
                     </div>
                   </div>
@@ -469,7 +648,7 @@ export default function CollegePage() {
             </div>
             
             <div className="mt-4 text-sm text-gray-500">
-              <p>{college.qualityOfLife.description}</p>
+              <p>{college.qualityOfLife?.description || "No description available."}</p>
             </div>
           </div>
         </div>
@@ -541,53 +720,59 @@ export default function CollegePage() {
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-500">Employment Rate</span>
-                    <span className="font-bold text-gray-800">{college.recruiting.employmentRate}</span>
+                    <span className="font-bold text-gray-800">{college.recruiting?.employmentRate || "N/A"}</span>
                   </div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium text-gray-500">Average Starting Salary</span>
-                    <span className="font-bold text-gray-800">{college.recruiting.startingSalary}</span>
+                    <span className="font-bold text-gray-800">{college.recruiting?.startingSalary || "N/A"}</span>
                   </div>
-                  {college.recruiting.salaryAfterYears && (
+                  {college.recruiting?.salaryAfterYears && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium text-gray-500">
-                        Salary after {college.recruiting.salaryAfterYears.years} years
+                        Salary after {college.recruiting.salaryAfterYears.years || "5"} years
                       </span>
                       <span className="font-bold text-gray-800">
-                        {college.recruiting.salaryAfterYears.amount}
+                        {college.recruiting.salaryAfterYears.amount || "N/A"}
                       </span>
                     </div>
                   )}
                 </div>
               </div>
               
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Top Industries</h3>
-                <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  {college.recruiting.topIndustries.map((industry, index) => (
-                    <div key={index} className="mb-3 last:mb-0">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">{industry.name}</span>
-                        <span className="font-bold text-gray-800">{industry.percentage}</span>
+              {Array.isArray(college.recruiting?.topIndustries) && college.recruiting.topIndustries.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Top Industries</h3>
+                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                    {college.recruiting.topIndustries.map((industry, index) => (
+                      <div key={index} className="mb-3 last:mb-0">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-gray-500">{industry.name}</span>
+                          <span className="font-bold text-gray-800">{industry.percentage}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-[#4068ec] h-2 rounded-full" 
+                            style={{ 
+                              width: typeof industry.percentage === 'string' 
+                                ? industry.percentage
+                                : '0%'
+                            }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-[#4068ec] h-2 rounded-full" 
-                          style={{ width: industry.percentage }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
             
-            {college.recruiting.graduateSchool && (
+            {college.recruiting?.graduateSchool && (
               <div className="mt-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Graduate School</h3>
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500">Graduate School Attendance</span>
-                    <span className="font-bold text-gray-800">{college.recruiting.graduateSchool.rate}</span>
+                    <span className="font-bold text-gray-800">{college.recruiting.graduateSchool.rate || "N/A"}</span>
                   </div>
                 </div>
               </div>

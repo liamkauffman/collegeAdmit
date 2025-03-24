@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import { prisma } from '@/lib/prisma';
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from '@/lib/prisma';
 
 // GET handler to fetch follow-up questions - keep for backward compatibility
 export async function GET() {
@@ -10,7 +10,14 @@ export async function GET() {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     // Get the user's session
-    const session = await getServerSession(authOptions);
+    let session;
+    try {
+      session = await getServerSession(authOptions);
+    } catch (sessionError) {
+      console.error("Error getting session:", sessionError);
+      // Continue without session
+      session = null;
+    }
     
     // Initialize the user context
     let userContext = null;
@@ -77,7 +84,14 @@ export async function POST(request) {
     const { initial_query, user_profile } = body;
     
     // Get the user's session
-    const session = await getServerSession(authOptions);
+    let session;
+    try {
+      session = await getServerSession(authOptions);
+    } catch (sessionError) {
+      console.error("Error getting session:", sessionError);
+      // Continue without session
+      session = null;
+    }
     
     // Initialize the user context
     let userContext = user_profile || {};

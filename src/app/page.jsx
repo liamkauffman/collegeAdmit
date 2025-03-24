@@ -25,7 +25,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [savedQuery, setSavedQuery] = useState("");
-
+  
   // Function to fetch follow-up questions
   const fetchFollowUpQuestions = async () => {
     try {
@@ -190,6 +190,7 @@ export default function Home() {
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && currentStep === "followup") {
+      e.preventDefault(); // Prevent the default behavior of adding a newline
       handleFollowUpAnswer();
     }
   };
@@ -201,6 +202,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950">
       <NavigationBar />
+      
       <main className="flex-1 relative">
         <div className="flex flex-col lg:flex-row h-full">
           {/* Sidebar - Only visible on large screens by default */}
@@ -305,6 +307,12 @@ export default function Home() {
                         value={currentAnswer}
                         onChange={(e) => setCurrentAnswer(e.target.value)}
                         onKeyPress={handleKeyPress}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleFollowUpAnswer();
+                          }
+                        }}
                       />
                       <div className="flex justify-center mt-5">
                         <Button 
@@ -335,24 +343,13 @@ export default function Home() {
             {/* Results State */}
             {!isLoading && !error && currentStep === "results" && recommendations && (
               <div className="pb-10 sm:pb-20">
-                <div className="mb-10 sm:mb-12 text-center">
-                  <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-[#4068ec] to-[#63D2FF]">Your College Recommendations</h2>
-                  <p className="text-[#4068ec]/70 dark:text-[#63D2FF]/70 max-w-3xl mx-auto mb-6">{searchSummary}</p>
-                  <Button 
-                    onClick={resetSearch}
-                    variant="outline"
-                    className="px-6 py-2.5 rounded-lg border border-[#BED8D4] bg-white/50 hover:bg-[#4068ec]/5 text-[#4068ec] dark:text-[#63D2FF] transition-all duration-300 shadow-sm"
-                  >
-                    Start New Search
-                  </Button>
-                </div>
+     
                 
                 {/* Best Fit College - Centered */}
                 {getBestFit() && (
                   <div className="mb-12 sm:mb-16">
                     <div className="flex justify-center">
                       <div className="w-full max-w-3xl transform hover:scale-[1.01] sm:hover:scale-[1.02] transition-all duration-300">
-                        <h3 className="text-xl font-semibold text-[#4068ec] dark:text-[#63D2FF] mb-3 text-center">Best College Match</h3>
                         <div className="shadow-lg rounded-xl overflow-hidden">
                           <CollegeCard college={getBestFit()} type="bestFit" />
                         </div>
@@ -363,7 +360,6 @@ export default function Home() {
                 
                 {/* College Categories in a row */}
                 <div className="px-4 sm:px-6">
-                  <h3 className="text-xl font-semibold text-[#4068ec] dark:text-[#63D2FF] mb-5 text-center">More College Options</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 h-full">
                     {/* Reach School */}
                     {getReachSchools()?.length > 0 && (
