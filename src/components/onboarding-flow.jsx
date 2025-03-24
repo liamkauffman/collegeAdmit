@@ -244,15 +244,15 @@ export function OnboardingFlow({ onComplete }) {
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center justify-center text-center p-6"
         >
-          <div className="text-3xl font-bold bg-gradient-to-r from-[#2081C3] to-[#63D2FF] bg-clip-text text-transparent mb-4">
-            Welcome to CollegeAdmit.AI
+          <div className="text-3xl font-bold bg-gradient-to-r from-[#4068ec] to-[#63D2FF] bg-clip-text text-transparent mb-4">
+            Let's get to know you
           </div>
           <p className="text-gray-600 dark:text-gray-300 mb-8">
             I want to ask you a few questions to get a better understanding of you so that I can deliver the best college search results
           </p>
           <Button 
             onClick={() => setShowWelcome(false)}
-            className="bg-gradient-to-r from-[#2081C3] to-[#63D2FF] text-white hover:from-[#2081C3]/90 hover:to-[#63D2FF]/90"
+            className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90"
           >
             Let's Get Started <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
@@ -271,7 +271,7 @@ export function OnboardingFlow({ onComplete }) {
         transition={{ duration: 0.3 }}
         className="p-6"
       >
-        <h2 className="text-2xl font-semibold text-[#2081C3] dark:text-[#63D2FF] mb-2">{currentQuestion.question}</h2>
+        <h2 className="text-2xl font-semibold text-[#4068ec] dark:text-[#63D2FF] mb-2">{currentQuestion.question}</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-6">{currentQuestion.description}</p>
         
         {error && (
@@ -285,7 +285,7 @@ export function OnboardingFlow({ onComplete }) {
             placeholder={currentQuestion.placeholder}
             value={currentAnswer || ""}
             onChange={(e) => handleAnswerChange(e.target.value)}
-            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
           />
         )}
 
@@ -294,7 +294,7 @@ export function OnboardingFlow({ onComplete }) {
             placeholder={currentQuestion.placeholder}
             value={currentAnswer || ""}
             onChange={(e) => handleAnswerChange(e.target.value)}
-            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
           />
         )}
 
@@ -302,7 +302,7 @@ export function OnboardingFlow({ onComplete }) {
           <div className="space-y-4 mb-6">
             {currentQuestion.fields.map((field) => (
               <div key={field.id}>
-                <Label htmlFor={field.id} className="text-[#2081C3] dark:text-[#63D2FF] mb-1 block">
+                <Label htmlFor={field.id} className="text-[#4068ec] dark:text-[#63D2FF] mb-1 block">
                   {field.label}
                 </Label>
                 <Input
@@ -310,7 +310,7 @@ export function OnboardingFlow({ onComplete }) {
                   placeholder={field.placeholder}
                   value={(currentAnswer && currentAnswer[field.id]) || ""}
                   onChange={(e) => handleAnswerChange(e.target.value, field.id)}
-                  className="w-full border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                  className="w-full border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                 />
               </div>
             ))}
@@ -328,9 +328,9 @@ export function OnboardingFlow({ onComplete }) {
                 <RadioGroupItem
                   value={option.value}
                   id={option.value}
-                  className="border-[#BED8D4] text-[#2081C3]"
+                  className="border-[#BED8D4] text-[#4068ec]"
                 />
-                <Label htmlFor={option.value} className="text-[#2081C3] dark:text-[#63D2FF]">
+                <Label htmlFor={option.value} className="text-[#4068ec] dark:text-[#63D2FF]">
                   {option.label}
                 </Label>
               </div>
@@ -346,9 +346,9 @@ export function OnboardingFlow({ onComplete }) {
                   id={option.value}
                   checked={Array.isArray(currentAnswer) && currentAnswer.includes(option.value)}
                   onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
+                  className="border-[#BED8D4] text-[#4068ec]"
                 />
-                <Label htmlFor={option.value} className="text-[#2081C3] dark:text-[#63D2FF]">
+                <Label htmlFor={option.value} className="text-[#4068ec] dark:text-[#63D2FF]">
                   {option.label}
                 </Label>
               </div>
@@ -360,7 +360,7 @@ export function OnboardingFlow({ onComplete }) {
           <Button
             variant="outline"
             onClick={handlePrevious}
-            className="border-[#BED8D4] text-[#2081C3] hover:bg-[#BED8D4]/20"
+            className="border-[#BED8D4] text-[#4068ec] hover:bg-[#BED8D4]/20"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Back
@@ -377,7 +377,7 @@ export function OnboardingFlow({ onComplete }) {
             )}
             <Button
               onClick={handleNext}
-              className="bg-gradient-to-r from-[#2081C3] to-[#63D2FF] text-white hover:from-[#2081C3]/90 hover:to-[#63D2FF]/90"
+              className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90"
             >
               {currentQuestionIndex < onboardingQuestions.length - 1 ? (
                 <>Next <ChevronRight className="ml-2 h-4 w-4" /></>
@@ -405,7 +405,7 @@ export function OnboardingFlow({ onComplete }) {
         {!showWelcome && (
           <div className="w-full h-1 bg-gray-200 dark:bg-gray-800">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#2081C3] to-[#63D2FF]"
+              className="h-full bg-gradient-to-r from-[#4068ec] to-[#63D2FF]"
               initial={{ width: `${progress}%` }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}

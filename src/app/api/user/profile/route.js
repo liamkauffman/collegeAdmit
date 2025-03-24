@@ -60,6 +60,69 @@ export async function PUT(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    // Get the authenticated user's session
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Get the request body
+    const body = await request.json();
+    const { preferences } = body;
+
+    if (!preferences) {
+      return NextResponse.json(
+        { message: 'Preferences data is required' },
+        { status: 400 }
+      );
+    }
+
+    // Look up the user by email (since NextAuth session may have email but not ID)
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update or create user preferences in the database
+    const updatedPreferences = await prisma.userPreferences.upsert({
+      where: {
+        userId: user.id,
+      },
+      update: {
+        data: JSON.stringify(preferences),
+      },
+      create: {
+        userId: user.id,
+        data: JSON.stringify(preferences),
+      },
+    });
+
+    return NextResponse.json(
+      { message: 'Preferences saved successfully' },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Preferences update error:', error);
+    return NextResponse.json(
+      { message: 'An error occurred while updating preferences' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request) {
   try {
     // Get the authenticated user's session

@@ -186,8 +186,8 @@ export default function CollegePage() {
             animate={{ opacity: 1 }}
             className="flex flex-col items-center"
           >
-            <div className="w-16 h-16 border-4 border-[#2081C3] border-t-transparent rounded-full animate-spin mb-4"></div>
-            <div className="text-[#2081C3] text-xl">Loading college information...</div>
+            <div className="w-16 h-16 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <div className="text-[#4068ec] text-xl">Loading college information...</div>
           </motion.div>
         </main>
       </div>
@@ -199,7 +199,7 @@ export default function CollegePage() {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-[#2081C3] text-xl">College not found</div>
+          <div className="text-[#4068ec] text-xl">College not found</div>
         </main>
       </div>
     )
@@ -210,7 +210,7 @@ export default function CollegePage() {
       <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-[#2081C3] text-xl">College not found</div>
+          <div className="text-[#4068ec] text-xl">College not found</div>
         </main>
       </div>
     )
@@ -284,8 +284,8 @@ export default function CollegePage() {
                 onClick={() => scrollToSection(section.id)}
                 className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
                   activeSection === section.id
-                    ? 'text-[#2081C3] border-b-2 border-[#2081C3]'
-                    : 'text-gray-500 hover:text-[#2081C3]'
+                    ? 'text-[#4068ec] border-b-2 border-[#4068ec]'
+                    : 'text-gray-500 hover:text-[#4068ec]'
                 }`}
               >
                 {section.label}
@@ -299,7 +299,7 @@ export default function CollegePage() {
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
         <div ref={el => sectionsRef.current['quick-facts'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Quick Facts</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quick Facts</h2>
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-[#F7F9F9] p-4 rounded-lg">
@@ -325,7 +325,7 @@ export default function CollegePage() {
         
         <div ref={el => sectionsRef.current['majors'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Majors</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Majors</h2>
             
             <div className="mb-4">
               <label htmlFor="major-select" className="block text-sm font-medium text-gray-700 mb-1">
@@ -348,7 +348,7 @@ export default function CollegePage() {
               {college.majors.slice(0, 10).map((major, index) => (
                 <span 
                   key={index} 
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${selectedMajor === major ? 'bg-[#2081C3] text-white' : 'bg-[#F7F9F9] text-gray-700 hover:bg-[#BED8D4]/50'}`}
+                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${selectedMajor === major ? 'bg-[#4068ec] text-white' : 'bg-[#F7F9F9] text-gray-700 hover:bg-[#BED8D4]/50'}`}
                   onClick={() => setSelectedMajor(major === selectedMajor ? null : major)}
                 >
                   {major}
@@ -365,7 +365,7 @@ export default function CollegePage() {
         
         <div ref={el => sectionsRef.current['acceptance'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Acceptance</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Acceptance</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div>
@@ -402,7 +402,7 @@ export default function CollegePage() {
                       <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#2081C3] h-2 rounded-full" style={{ width: '60%' }}></div>
+                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
                     </div>
                   </div>
                   
@@ -412,7 +412,7 @@ export default function CollegePage() {
                       <span className="font-bold text-gray-800">{college.academics.satRange.min} - {college.academics.satRange.max}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#2081C3] h-2 rounded-full" style={{ width: '70%' }}></div>
+                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '70%' }}></div>
                     </div>
                   </div>
                   
@@ -423,7 +423,7 @@ export default function CollegePage() {
                         <span className="font-bold text-gray-800">{college.academics.actRange.min} - {college.academics.actRange.max}</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#2081C3] h-2 rounded-full" style={{ width: '65%' }}></div>
+                        <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '65%' }}></div>
                       </div>
                     </div>
                   )}
@@ -449,7 +449,7 @@ export default function CollegePage() {
         
         <div ref={el => sectionsRef.current['quality-of-life'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Quality of Life</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quality of Life</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {college.qualityOfLife.factors.map((factor, index) => (
@@ -459,7 +459,7 @@ export default function CollegePage() {
                     <span className="font-bold text-gray-800 mr-2">{factor.score}/10</span>
                     <div className="w-full bg-gray-200 rounded-full h-2 flex-1">
                       <div 
-                        className="bg-[#2081C3] h-2 rounded-full" 
+                        className="bg-[#4068ec] h-2 rounded-full" 
                         style={{ width: `${(factor.score / 10) * 100}%` }}
                       ></div>
                     </div>
@@ -476,7 +476,7 @@ export default function CollegePage() {
         
         <div ref={el => sectionsRef.current['costs'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Costs</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Costs</h2>
             
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-3">Tuition & Fees</h3>
@@ -533,7 +533,7 @@ export default function CollegePage() {
         
         <div ref={el => sectionsRef.current['recruiting'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#2081C3] mb-4">Recruiting & Outcomes</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Recruiting & Outcomes</h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
@@ -571,7 +571,7 @@ export default function CollegePage() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div 
-                          className="bg-[#2081C3] h-2 rounded-full" 
+                          className="bg-[#4068ec] h-2 rounded-full" 
                           style={{ width: industry.percentage }}
                         ></div>
                       </div>
@@ -606,7 +606,7 @@ export default function CollegePage() {
             className="fixed bottom-20 right-4 w-96 h-[500px] bg-white rounded-xl shadow-lg overflow-hidden z-40"
           >
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-[#2081C3]">Ask about {college.name}</h3>
+              <h3 className="font-semibold text-[#4068ec]">Ask about {college.name}</h3>
               <button
                 onClick={() => setIsChatOpen(false)}
                 className="p-1 hover:bg-gray-100 rounded-full"
@@ -624,7 +624,7 @@ export default function CollegePage() {
                   <div
                     className={`inline-block px-4 py-2 rounded-lg ${
                       msg.role === 'user'
-                        ? 'bg-[#2081C3] text-white'
+                        ? 'bg-[#4068ec] text-white'
                         : 'bg-gray-100 text-gray-800'
                     }`}
                   >
@@ -656,7 +656,7 @@ export default function CollegePage() {
       {/* Chat Toggle Button */}
       <motion.button
         onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed bottom-4 right-4 w-12 h-12 bg-[#2081C3] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#1a6da4] transition-colors z-40"
+        className="fixed bottom-4 right-4 w-12 h-12 bg-[#4068ec] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#4068ec]/90 transition-colors z-40"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >

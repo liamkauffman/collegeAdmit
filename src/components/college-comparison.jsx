@@ -105,9 +105,9 @@ export function CollegeCompare({ college, onSelectCollege }) {
       <DialogTrigger asChild>
         <Button 
           onClick={openDialog}
-          className="relative overflow-hidden w-full group bg-gradient-to-r from-[#2081C3] to-[#63D2FF] text-white border-0 rounded-lg px-4 py-3 transition-all duration-300 ease-in-out transform hover:scale-[1.02] shadow-md"
+          className="relative overflow-hidden w-full group bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white border-0 rounded-lg px-4 py-3 transition-all duration-300 ease-in-out transform hover:scale-[1.02] shadow-md"
         >
-          <div className="absolute inset-0 bg-gradient-to-r dark:from-blue-600/30 dark:to-cyan-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#4068ec]/20 to-[#63D2FF]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg" />
           <span className="flex items-center justify-center gap-2 relative z-10 font-medium">
             <Building2 className="w-4 h-4 flex-shrink-0" />
             Find Similar Colleges
@@ -117,7 +117,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
       
       <DialogContent className="sm:max-w-[950px] max-h-[90vh] p-0 bg-white dark:bg-gray-900 border-0 rounded-xl overflow-hidden shadow-2xl">
         <DialogHeader className="px-6 pt-6 pb-2 border-b border-gray-100 dark:border-gray-800">
-          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-[#2081C3] to-[#63D2FF] bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-[#4068ec] to-[#63D2FF] bg-clip-text text-transparent">
             Colleges Similar to {college.name || "Selected College"}
           </DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-400">
@@ -137,8 +137,8 @@ export function CollegeCompare({ college, onSelectCollege }) {
               >
                 <div className="flex flex-col items-center gap-3">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#2081C3]/20 to-[#63D2FF]/20 blur-xl rounded-full"></div>
-                    <Loader2 className="h-12 w-12 animate-spin text-[#2081C3] dark:text-[#63D2FF] relative z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#4068ec]/20 to-[#63D2FF]/20 blur-xl rounded-full"></div>
+                    <Loader2 className="h-12 w-12 animate-spin text-[#4068ec] dark:text-[#63D2FF] relative z-10" />
                   </div>
                   <p className="text-lg text-gray-600 dark:text-gray-400 animate-pulse mt-4">
                     Finding similar colleges...
@@ -156,7 +156,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
               >
                 <button 
                   onClick={handleBackToCards}
-                  className="flex items-center text-[#2081C3] dark:text-[#63D2FF] mb-4 hover:underline"
+                  className="flex items-center text-[#4068ec] dark:text-[#63D2FF] mb-4 hover:underline"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" /> Back to all colleges
                 </button>
@@ -171,7 +171,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
                         className="w-full h-full object-cover"
                       />
                       <div className="absolute top-4 right-4 z-20">
-                        <Badge className="bg-gradient-to-r from-[#2081C3] to-[#63D2FF] text-white border-0 py-1.5 px-3">
+                        <Badge className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white border-0 py-1.5 px-3">
                           {similarColleges[selectedCollegeIndex].similarityScore}% Match
                         </Badge>
                       </div>
@@ -222,7 +222,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
                         Why {similarColleges[selectedCollegeIndex].name} is similar
                       </h3>
                       <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-100 dark:border-blue-800/30">
-                        <div className="text-[#2081C3] dark:text-[#63D2FF] font-medium">
+                        <div className="text-[#4068ec] dark:text-[#63D2FF] font-medium">
                           Similar in: {similarColleges[selectedCollegeIndex].matchReason}
                         </div>
                         <p className="mt-2 text-gray-600 dark:text-gray-400">
@@ -242,7 +242,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
                           onSelectCollege(similarColleges[selectedCollegeIndex]);
                           setIsDialogOpen(false);
                         }}
-                        className="w-full bg-gradient-to-r from-[#2081C3] to-[#63D2FF] hover:from-[#2081C3]/90 hover:to-[#63D2FF]/90 text-white py-2.5 rounded-lg shadow transition-all duration-300"
+                        className="w-full bg-gradient-to-r from-[#4068ec] to-[#63D2FF] hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90 text-white py-2.5 rounded-lg shadow transition-all duration-300"
                       >
                         View College Profile
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -264,7 +264,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
                   <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currently Viewing</h3>
                   <div className="flex items-center">
                     <div className="flex-1">
-                      <p className="font-semibold text-xl text-[#2081C3] dark:text-[#63D2FF]">
+                      <p className="font-semibold text-xl text-[#4068ec] dark:text-[#63D2FF]">
                         {college.name || "Selected College"}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -296,7 +296,7 @@ export function CollegeCompare({ college, onSelectCollege }) {
                           className="w-full h-full object-cover"
                         />
                         <div className="absolute top-3 right-3 z-20">
-                          <Badge className="bg-gradient-to-r from-[#2081C3] to-[#63D2FF] text-white border-0 py-1 px-2.5">
+                          <Badge className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white border-0 py-1 px-2.5">
                             {similarCollege.similarityScore}% Match
                           </Badge>
                         </div>
@@ -327,13 +327,13 @@ export function CollegeCompare({ college, onSelectCollege }) {
                         
                         <div className="mt-4 text-xs">
                           <span className="text-gray-500 dark:text-gray-400">Similar in: </span>
-                          <span className="text-[#2081C3] dark:text-[#63D2FF] font-medium">
+                          <span className="text-[#4068ec] dark:text-[#63D2FF] font-medium">
                             {similarCollege.matchReason}
                           </span>
                         </div>
                         
                         <div className="flex justify-center mt-3">
-                          <div className="flex items-center gap-1 text-[#2081C3] dark:text-[#63D2FF] text-sm font-medium">
+                          <div className="flex items-center gap-1 text-[#4068ec] dark:text-[#63D2FF] text-sm font-medium">
                             View Details
                             <ChevronRight className="h-3 w-3" />
                           </div>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ImageLogo } from '@/components/icons/ImageLogo';
+import { SvgLogo } from '@/components/icons/SvgLogo';
 
 export default function SignIn() {
   const router = useRouter();
@@ -43,13 +43,13 @@ export default function SignIn() {
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center mb-4">
-            <ImageLogo size={50} />
-            <span className="text-2xl font-bold text-[#2081C3] ml-3">CollegeAdmit.AI</span>
+            <SvgLogo />
+            <span className="text-2xl font-bold text-[#4068ec] ml-3">CollegeAdmit.AI</span>
           </div>
-          <h2 className="text-center text-3xl font-bold tracking-tight text-[#2081C3]">
+          <h2 className="text-center text-3xl font-bold tracking-tight text-[#4068ec]">
             Sign in to your account
           </h2>
-          <p className="mt-2 text-center text-sm text-[#2081C3]/80">
+          <p className="mt-2 text-center text-sm text-[#4068ec]/80">
             Or{' '}
             <Link href="/auth/signup" className="font-medium text-[#63D2FF] hover:text-[#78D5D7]">
               create a new account
@@ -71,7 +71,7 @@ export default function SignIn() {
           <form className="space-y-6 auth-form" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email-address" className="block text-sm font-medium text-[#2081C3]">
+                <label htmlFor="email-address" className="block text-sm font-medium text-[#4068ec]">
                   Email address
                 </label>
                 <input
@@ -80,14 +80,14 @@ export default function SignIn() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#2081C3] bg-white/50 placeholder:text-[#2081C3]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#4068ec] bg-white/50 placeholder:text-[#4068ec]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-[#2081C3]">
+                <label htmlFor="password" className="block text-sm font-medium text-[#4068ec]">
                   Password
                 </label>
                 <input
@@ -96,7 +96,7 @@ export default function SignIn() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#2081C3] bg-white/50 placeholder:text-[#2081C3]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#4068ec] bg-white/50 placeholder:text-[#4068ec]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -112,7 +112,7 @@ export default function SignIn() {
                   type="checkbox"
                   className="h-4 w-4"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-[#2081C3]">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-[#4068ec]">
                   Remember me
                 </label>
               </div>
@@ -128,7 +128,7 @@ export default function SignIn() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-md bg-[#2081C3] px-3 py-2 text-sm font-semibold text-white hover:bg-[#2081C3]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2081C3] disabled:bg-[#2081C3]/70 transition-colors"
+                className="group relative flex w-full justify-center rounded-md bg-[#4068ec] px-3 py-2 text-sm font-semibold text-white hover:bg-[#4068ec]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4068ec] disabled:bg-[#4068ec]/70 transition-colors"
               >
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
@@ -137,7 +137,7 @@ export default function SignIn() {
         </div>
         
         <div className="text-center">
-          <Link href="/" className="text-sm text-[#2081C3]/80 hover:text-[#2081C3]">
+          <Link href="/" className="text-sm text-[#4068ec]/80 hover:text-[#4068ec]">
             ← Back to home
           </Link>
         </div>

@@ -1,1 +1,4 @@
-export const API_URL = process.env.NEXT_PUBLIC_API_URL; 
+// API Configuration
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// Other configurations can be added here 

@@ -310,75 +310,47 @@ export function SearchForm({ isSidebar = false }) {
       <div className="space-y-6">
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">College type</h3>
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec]">College type</h3>
             <div className="space-y-2">
               <div className="flex items-center">
                 <Checkbox 
                   id="type-4year" 
                   checked={(formData.collegeTypes || []).includes('4-year')}
                   onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', '4-year', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
+                  className="border-[#BED8D4] text-[#4068ec]"
                 />
-                <label htmlFor="type-4year" className="ml-2 text-sm text-[#2081C3]/80">4-year</label>
+                <label htmlFor="type-4year" className="ml-2 text-sm text-[#4068ec]/80">4-year</label>
               </div>
               <div className="flex items-center">
                 <Checkbox 
                   id="type-private" 
                   checked={(formData.collegeTypes || []).includes('private')}
                   onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'private', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
+                  className="border-[#BED8D4] text-[#4068ec]"
                 />
-                <label htmlFor="type-private" className="ml-2 text-sm text-[#2081C3]/80">Private</label>
+                <label htmlFor="type-private" className="ml-2 text-sm text-[#4068ec]/80">Private</label>
               </div>
               <div className="flex items-center">
                 <Checkbox 
                   id="type-public" 
                   checked={(formData.collegeTypes || []).includes('public')}
                   onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'public', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
+                  className="border-[#BED8D4] text-[#4068ec]"
                 />
-                <label htmlFor="type-public" className="ml-2 text-sm text-[#2081C3]/80">Public</label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox 
-                  id="type-2year" 
-                  checked={(formData.collegeTypes || []).includes('2-year')}
-                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', '2-year', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="type-2year" className="ml-2 text-sm text-[#2081C3]/80">2-year</label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox 
-                  id="type-community" 
-                  checked={(formData.collegeTypes || []).includes('community')}
-                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'community', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="type-community" className="ml-2 text-sm text-[#2081C3]/80">Community</label>
-              </div>
-              <div className="flex items-center">
-                <Checkbox 
-                  id="type-other" 
-                  checked={(formData.collegeTypes || []).includes('other')}
-                  onCheckedChange={(checked) => handleCheckboxChange('collegeTypes', 'other', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="type-other" className="ml-2 text-sm text-[#2081C3]/80">Other</label>
+                <label htmlFor="type-public" className="ml-2 text-sm text-[#4068ec]/80">Public</label>
               </div>
             </div>
           </div>
 
           <div className="border-t border-[#BED8D4] pt-4">
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3] flex items-center">
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec] flex items-center">
               General area of study 
-              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#BED8D4] text-[#2081C3] text-xs">?</span>
             </h3>
             <Select
               value={formData.studyArea}
               onValueChange={(value) => handleInputChange("studyArea", value)}
             >
-              <SelectTrigger className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm">
+              <SelectTrigger className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm">
                 <SelectValue placeholder="Select area" />
               </SelectTrigger>
               <SelectContent className="bg-white border-[#BED8D4]">
@@ -393,109 +365,94 @@ export function SearchForm({ isSidebar = false }) {
           </div>
 
           <div className="border-t border-[#BED8D4] pt-4">
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3] flex items-center">
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec] flex items-center">
               Majors
-              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#BED8D4] text-[#2081C3] text-xs">?</span>
             </h3>
             <Input
               placeholder="Search majors..."
-              className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm mb-2"
+              className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm mb-2"
             />
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <Checkbox 
-                  id="campus" 
-                  checked={(formData.onlineOptions || []).includes('campus')}
-                  onCheckedChange={(checked) => handleCheckboxChange('onlineOptions', 'campus', checked)}
-                  className="border-[#BED8D4] text-[#2081C3]"
-                />
-                <label htmlFor="campus" className="ml-2 text-sm text-[#2081C3]/80">Campus</label>
-              </div>
-            </div>
-            <div className="mt-2">
-              <a href="#" className="text-sm text-[#2081C3] hover:underline">See all majors</a>
-            </div>
           </div>
 
           <div className="border-t border-[#BED8D4] pt-4">
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">SAT Verbal Range</h3>
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec]">SAT Verbal Range</h3>
             <div className="space-y-2">
               <div>
-                <label htmlFor="satVerbalMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <label htmlFor="satVerbalMin" className="text-xs text-[#4068ec]/70 mb-1 block">Minimum</label>
                 <Input
                   id="satVerbalMin"
                   type="number"
                   placeholder="Min"
                   value={formData.satVerbalMin}
                   onChange={(e) => handleInputChange("satVerbalMin", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="satVerbalMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <label htmlFor="satVerbalMax" className="text-xs text-[#4068ec]/70 mb-1 block">Maximum</label>
                 <Input
                   id="satVerbalMax"
                   type="number"
                   placeholder="Max"
                   value={formData.satVerbalMax}
                   onChange={(e) => handleInputChange("satVerbalMax", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
             </div>
           </div>
 
           <div className="border-t border-[#BED8D4] pt-4">
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">SAT Math Range</h3>
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec]">SAT Math Range</h3>
             <div className="space-y-2">
               <div>
-                <label htmlFor="satMathMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <label htmlFor="satMathMin" className="text-xs text-[#4068ec]/70 mb-1 block">Minimum</label>
                 <Input
                   id="satMathMin"
                   type="number"
                   placeholder="Min"
                   value={formData.satMathMin}
                   onChange={(e) => handleInputChange("satMathMin", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="satMathMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <label htmlFor="satMathMax" className="text-xs text-[#4068ec]/70 mb-1 block">Maximum</label>
                 <Input
                   id="satMathMax"
                   type="number"
                   placeholder="Max"
                   value={formData.satMathMax}
                   onChange={(e) => handleInputChange("satMathMax", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
             </div>
           </div>
 
           <div className="border-t border-[#BED8D4] pt-4">
-            <h3 className="text-sm font-medium mb-2 text-[#2081C3]">Tuition Range (In-State)</h3>
+            <h3 className="text-sm font-medium mb-2 text-[#4068ec]">Tuition Range (In-State)</h3>
             <div className="space-y-2">
               <div>
-                <label htmlFor="tuitionMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                <label htmlFor="tuitionMin" className="text-xs text-[#4068ec]/70 mb-1 block">Minimum</label>
                 <Input
                   id="tuitionMin"
                   type="number"
                   placeholder="Min"
                   value={formData.tuitionMin}
                   onChange={(e) => handleInputChange("tuitionMin", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
               <div>
-                <label htmlFor="tuitionMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                <label htmlFor="tuitionMax" className="text-xs text-[#4068ec]/70 mb-1 block">Maximum</label>
                 <Input
                   id="tuitionMax"
                   type="number"
                   placeholder="Max"
                   value={formData.tuitionMax}
                   onChange={(e) => handleInputChange("tuitionMax", e.target.value)}
-                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3] text-sm"
+                  className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec] text-sm"
                 />
               </div>
             </div>
@@ -509,7 +466,7 @@ export function SearchForm({ isSidebar = false }) {
         <Button 
           onClick={handleSubmit}
           disabled={isLoading}
-          className="w-full bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+          className="w-full bg-[#4068ec] hover:bg-[#4068ec]/90 text-white"
         >
           {isLoading ? "Searching..." : "Search Colleges"}
         </Button>
@@ -522,18 +479,18 @@ export function SearchForm({ isSidebar = false }) {
     <div className="space-y-8">
       <Card className="border-[#BED8D4] bg-white/90">
         <CardHeader className="pb-3">
-          <CardTitle className="text-xl font-bold text-[#2081C3]">Find Your Perfect College</CardTitle>
+          <CardTitle className="text-xl font-bold text-[#4068ec]">Find Your Perfect College</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="type" className="text-[#2081C3]">Type</Label>
+                <Label htmlFor="type" className="text-[#4068ec]">Type</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(value) => handleInputChange("type", value)}
                 >
-                  <SelectTrigger id="type" className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]">
+                  <SelectTrigger id="type" className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-[#BED8D4]">
@@ -546,35 +503,35 @@ export function SearchForm({ isSidebar = false }) {
               </div>
 
               <div>
-                <Label htmlFor="tuitionMin" className="text-[#2081C3]">Tuition Range (In-State)</Label>
+                <Label htmlFor="tuitionMin" className="text-[#4068ec]">Tuition Range (In-State)</Label>
                 <div className="space-y-2">
                   <div>
-                    <label htmlFor="tuitionMin" className="text-xs text-[#2081C3]/70 mb-1 block">Minimum</label>
+                    <label htmlFor="tuitionMin" className="text-xs text-[#4068ec]/70 mb-1 block">Minimum</label>
                     <Input
                       id="tuitionMin"
                       type="number"
                       placeholder="Min"
                       value={formData.tuitionMin}
                       onChange={(e) => handleInputChange("tuitionMin", e.target.value)}
-                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                     />
                   </div>
                   <div>
-                    <label htmlFor="tuitionMax" className="text-xs text-[#2081C3]/70 mb-1 block">Maximum</label>
+                    <label htmlFor="tuitionMax" className="text-xs text-[#4068ec]/70 mb-1 block">Maximum</label>
                     <Input
                       id="tuitionMax"
                       type="number"
                       placeholder="Max"
                       value={formData.tuitionMax}
                       onChange={(e) => handleInputChange("tuitionMax", e.target.value)}
-                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                      className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                     />
                   </div>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="satVerbalMin" className="text-[#2081C3]">SAT Verbal Range</Label>
+                <Label htmlFor="satVerbalMin" className="text-[#4068ec]">SAT Verbal Range</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     id="satVerbalMin"
@@ -582,7 +539,7 @@ export function SearchForm({ isSidebar = false }) {
                     placeholder="Min"
                     value={formData.satVerbalMin}
                     onChange={(e) => handleInputChange("satVerbalMin", e.target.value)}
-                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                   />
                   <Input
                     id="satVerbalMax"
@@ -590,13 +547,13 @@ export function SearchForm({ isSidebar = false }) {
                     placeholder="Max"
                     value={formData.satVerbalMax}
                     onChange={(e) => handleInputChange("satVerbalMax", e.target.value)}
-                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                   />
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="satMathMin" className="text-[#2081C3]">SAT Math Range</Label>
+                <Label htmlFor="satMathMin" className="text-[#4068ec]">SAT Math Range</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     id="satMathMin"
@@ -604,7 +561,7 @@ export function SearchForm({ isSidebar = false }) {
                     placeholder="Min"
                     value={formData.satMathMin}
                     onChange={(e) => handleInputChange("satMathMin", e.target.value)}
-                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                   />
                   <Input
                     id="satMathMax"
@@ -612,7 +569,7 @@ export function SearchForm({ isSidebar = false }) {
                     placeholder="Max"
                     value={formData.satMathMax}
                     onChange={(e) => handleInputChange("satMathMax", e.target.value)}
-                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    className="border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                   />
                 </div>
               </div>
@@ -625,7 +582,7 @@ export function SearchForm({ isSidebar = false }) {
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="w-full bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+              className="w-full bg-[#4068ec] hover:bg-[#4068ec]/90 text-white"
             >
               {isLoading ? "Searching..." : "Search Colleges"}
             </Button>
@@ -637,8 +594,8 @@ export function SearchForm({ isSidebar = false }) {
         <>
           <Card className="border-[#BED8D4] bg-white/90">
             <CardHeader className="pb-3">
-              <CardTitle className="text-xl font-bold text-[#2081C3]">Search Results</CardTitle>
-              <p className="text-[#2081C3]/80 text-sm">
+              <CardTitle className="text-xl font-bold text-[#4068ec]">Search Results</CardTitle>
+              <p className="text-[#4068ec]/80 text-sm">
                 Found {searchResults.length} colleges matching your criteria
               </p>
             </CardHeader>
@@ -652,7 +609,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('name')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             College Name {getSortIcon('name')}
                           </div>
                         </TableHead>
@@ -660,7 +617,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('state')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             State {getSortIcon('state')}
                           </div>
                         </TableHead>
@@ -668,7 +625,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('type')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             Type {getSortIcon('type')}
                           </div>
                         </TableHead>
@@ -676,7 +633,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('tuition')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             Tuition {getSortIcon('tuition')}
                           </div>
                         </TableHead>
@@ -684,7 +641,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('satVerbalAvg')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             SAT Verbal Avg {getSortIcon('satVerbalAvg')}
                           </div>
                         </TableHead>
@@ -692,7 +649,7 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#BED8D4]/20"
                           onClick={() => handleSort('satMathAvg')}
                         >
-                          <div className="flex items-center text-[#2081C3]">
+                          <div className="flex items-center text-[#4068ec]">
                             SAT Math Avg {getSortIcon('satMathAvg')}
                           </div>
                         </TableHead>
@@ -705,14 +662,14 @@ export function SearchForm({ isSidebar = false }) {
                           className="cursor-pointer hover:bg-[#F7F9F9] border-b border-[#BED8D4]/50"
                           onClick={() => handleCollegeClick(college.id)}
                         >
-                          <TableCell className="font-medium text-[#2081C3] hover:text-[#63D2FF]">
+                          <TableCell className="font-medium text-[#4068ec] hover:text-[#63D2FF]">
                             {college.name}
                           </TableCell>
-                          <TableCell className="text-[#2081C3]/80">{college.state}</TableCell>
-                          <TableCell className="text-[#2081C3]/80">{college.type}</TableCell>
-                          <TableCell className="text-[#2081C3]/80">{formatCurrency(college.tuition)}</TableCell>
-                          <TableCell className="text-[#2081C3]/80">{college.satVerbalAvg || 'N/A'}</TableCell>
-                          <TableCell className="text-[#2081C3]/80">{college.satMathAvg || 'N/A'}</TableCell>
+                          <TableCell className="text-[#4068ec]/80">{college.state}</TableCell>
+                          <TableCell className="text-[#4068ec]/80">{college.type}</TableCell>
+                          <TableCell className="text-[#4068ec]/80">{formatCurrency(college.tuition)}</TableCell>
+                          <TableCell className="text-[#4068ec]/80">{college.satVerbalAvg || 'N/A'}</TableCell>
+                          <TableCell className="text-[#4068ec]/80">{college.satMathAvg || 'N/A'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -725,18 +682,18 @@ export function SearchForm({ isSidebar = false }) {
                       variant="outline"
                       onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
-                      className="border-[#BED8D4] text-[#2081C3] hover:bg-[#BED8D4]/20"
+                      className="border-[#BED8D4] text-[#4068ec] hover:bg-[#BED8D4]/20"
                     >
                       Previous
                     </Button>
-                    <span className="flex items-center px-3 text-[#2081C3]">
+                    <span className="flex items-center px-3 text-[#4068ec]">
                       Page {currentPage} of {totalPages}
                     </span>
                     <Button
                       variant="outline"
                       onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
-                      className="border-[#BED8D4] text-[#2081C3] hover:bg-[#BED8D4]/20"
+                      className="border-[#BED8D4] text-[#4068ec] hover:bg-[#BED8D4]/20"
                     >
                       Next
                     </Button>
@@ -749,8 +706,8 @@ export function SearchForm({ isSidebar = false }) {
           {/* Chat Interface */}
           <Card className="border-[#BED8D4] bg-white/90 mt-8">
             <CardHeader className="pb-3">
-              <CardTitle className="text-xl font-bold text-[#2081C3]">Ask AI About These Colleges</CardTitle>
-              <p className="text-[#2081C3]/80 text-sm">
+              <CardTitle className="text-xl font-bold text-[#4068ec]">Ask AI About These Colleges</CardTitle>
+              <p className="text-[#4068ec]/80 text-sm">
                 Ask questions about any of the colleges in your search results
               </p>
             </CardHeader>
@@ -766,8 +723,8 @@ export function SearchForm({ isSidebar = false }) {
                         <div
                           className={`max-w-[80%] rounded-lg px-4 py-2 ${
                             message.role === 'user'
-                              ? 'bg-[#2081C3] text-white'
-                              : 'bg-[#F7F9F9] border border-[#BED8D4] text-[#2081C3]'
+                              ? 'bg-[#4068ec] text-white'
+                              : 'bg-[#F7F9F9] border border-[#BED8D4] text-[#4068ec]'
                           }`}
                         >
                           <p 
@@ -787,12 +744,12 @@ export function SearchForm({ isSidebar = false }) {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     disabled={isSending}
-                    className="flex-1 border-[#BED8D4] focus:ring-[#63D2FF] text-[#2081C3]"
+                    className="flex-1 border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
                   />
                   <Button 
                     type="submit" 
                     disabled={isSending || !newMessage.trim()}
-                    className="px-4 bg-[#2081C3] hover:bg-[#2081C3]/90 text-white"
+                    className="px-4 bg-[#4068ec] hover:bg-[#4068ec]/90 text-white"
                   >
                     {isSending ? (
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -73,6 +73,29 @@ export const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
+        
+        // Fetch user preferences and add them to the session
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.id },
+            include: { preferences: true }
+          });
+          
+          if (user?.preferences?.data) {
+            // Parse the JSON string preferences to include in the session
+            try {
+              session.user.preferences = JSON.parse(user.preferences.data);
+            } catch (parseError) {
+              console.error("Error parsing user preferences:", parseError);
+              session.user.preferences = {};
+            }
+          } else {
+            session.user.preferences = {};
+          }
+        } catch (error) {
+          console.error("Error fetching user preferences for session:", error);
+          session.user.preferences = {};
+        }
       }
       return session;
     },

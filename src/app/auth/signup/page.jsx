@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
-import { ImageLogo } from '@/components/icons/ImageLogo';
+import { SvgLogo } from '@/components/icons/SvgLogo';
 import { OnboardingFlow } from '@/components/onboarding-flow';
 
 export default function SignUp() {
@@ -99,13 +99,13 @@ export default function SignUp() {
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center mb-4">
-              <ImageLogo size={50} />
-              <span className="text-2xl font-bold text-[#2081C3] ml-3">CollegeAdmit.AI</span>
+              <SvgLogo />
+              <span className="text-2xl font-bold text-[#4068ec] ml-3">CollegeAdmit.AI</span>
             </div>
-            <h2 className="text-center text-3xl font-bold tracking-tight text-[#2081C3]">
+            <h2 className="text-center text-3xl font-bold tracking-tight text-[#4068ec]">
               Create your account
             </h2>
-            <p className="mt-2 text-center text-sm text-[#2081C3]/80">
+            <p className="mt-2 text-center text-sm text-[#4068ec]/80">
               Or{' '}
               <Link href="/auth/signin" className="font-medium text-[#63D2FF] hover:text-[#78D5D7]">
                 sign in to your existing account
@@ -201,7 +201,7 @@ export default function SignUp() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative flex w-full justify-center rounded-md bg-[#2081C3] px-3 py-2 text-sm font-semibold text-white hover:bg-[#2081C3]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2081C3] disabled:bg-[#2081C3]/70 transition-colors"
+                  className="group relative flex w-full justify-center rounded-md bg-[#4068ec] px-3 py-2 text-sm font-semibold text-white hover:bg-[#4068ec]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4068ec] disabled:bg-[#4068ec]/70 transition-colors"
                 >
                   {isLoading ? 'Creating account...' : 'Create account'}
                 </button>
@@ -210,7 +210,7 @@ export default function SignUp() {
           </div>
           
           <div className="text-center">
-            <Link href="/" className="text-sm text-[#2081C3]/80 hover:text-[#2081C3]">
+            <Link href="/" className="text-sm text-[#4068ec]/80 hover:text-[#4068ec]">
               ← Back to home
             </Link>
           </div>
