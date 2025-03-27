@@ -41,7 +41,7 @@ export default function NavigationBar() {
             <div className="flex items-center justify-center">
               <SvgLogo size={32} />
             </div>
-            <span className="ml-2 text-xl font-bold text-[#4068ec] dark:text-[#63D2FF]">CollegeAdmit.AI</span>
+            <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">CollegeAdmit.AI</span>
           </Link>
         </div>
         
@@ -52,8 +52,8 @@ export default function NavigationBar() {
               key={item.href}
               variant={pathname === item.href ? "default" : "ghost"}
               className={pathname === item.href 
-                ? "bg-[#4068ec] hover:bg-[#4068ec]/90 dark:bg-[#63D2FF] dark:hover:bg-[#63D2FF]/90" 
-                : "hover:bg-[#BED8D4] hover:text-[#4068ec] dark:hover:bg-gray-800 dark:hover:text-[#63D2FF]"}
+                ? "bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900" 
+                : "hover:bg-gray-100 text-gray-900 dark:text-white dark:hover:bg-gray-800"}
               asChild
             >
               <Link
@@ -61,8 +61,8 @@ export default function NavigationBar() {
                 className={cn(
                   "text-sm font-medium transition-colors",
                   pathname === item.href
-                    ? "text-white"
-                    : "text-[#4068ec] dark:text-[#63D2FF]"
+                    ? "text-white dark:text-gray-900"
+                    : "text-gray-900 dark:text-white"
                 )}
               >
                 {item.name}
@@ -75,15 +75,15 @@ export default function NavigationBar() {
         <Sheet>
           <SheetTrigger asChild className="md:hidden">
             <Button variant="ghost" size="icon" className="md:hidden mr-2">
-              <Menu className="h-6 w-6 text-[#4068ec] dark:text-[#63D2FF]" />
+              <Menu className="h-6 w-6 text-gray-900 dark:text-white" />
               <span className="sr-only">Open menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="bg-white dark:bg-gray-900 border-r border-[#BED8D4] dark:border-gray-700">
+          <SheetContent side="left" className="bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700">
             <div className="flex flex-col h-full">
               <div className="mb-8 mt-2 flex items-center">
                 <SvgLogo  />
-                <span className="ml-2 text-lg font-bold text-[#4068ec] dark:text-[#63D2FF]">CollegeAdmit.AI</span>
+                <span className="ml-2 text-lg font-bold text-gray-900 dark:text-white">CollegeAdmit.AI</span>
               </div>
               
               {/* Mobile Navigation */}
@@ -94,10 +94,10 @@ export default function NavigationBar() {
                       <Link 
                         href={item.href}
                         className={cn(
-                          "flex items-center p-2 rounded-md text-gray-700 dark:text-gray-300",
+                          "flex items-center p-2 rounded-md",
                           pathname === item.href 
-                            ? "bg-[#BED8D4]/20 dark:bg-gray-800 text-[#4068ec] dark:text-[#63D2FF]" 
-                            : "hover:bg-[#BED8D4]/20 dark:hover:bg-gray-800"
+                            ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white" 
+                            : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                         )}
                       >
                         {item.name}
@@ -107,13 +107,13 @@ export default function NavigationBar() {
                 </div>
               </div>
               
-              <div className="mt-auto space-y-2 pt-4 border-t border-[#BED8D4]/30 dark:border-gray-700">
+              <div className="mt-auto space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
                 {isAuthenticated ? (
                   <div className="space-y-2">
                     <SheetClose asChild>
                       <Link 
                         href="/dashboard" 
-                        className="flex items-center p-2 rounded-md hover:bg-[#BED8D4]/20 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
                       >
                         Dashboard
                       </Link>
@@ -121,7 +121,7 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/profile" 
-                        className="flex items-center p-2 rounded-md hover:bg-[#BED8D4]/20 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
                       >
                         Profile
                       </Link>
@@ -129,7 +129,7 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/settings" 
-                        className="flex items-center p-2 rounded-md hover:bg-[#BED8D4]/20 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
+                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
                       >
                         Settings
                       </Link>
@@ -149,7 +149,7 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/auth/signin" 
-                        className="flex items-center justify-center p-2 rounded-md bg-[#4068ec]/10 hover:bg-[#4068ec]/20 dark:bg-[#63D2FF]/10 dark:hover:bg-[#63D2FF]/20 text-[#4068ec] dark:text-[#63D2FF] font-medium"
+                        className="flex items-center justify-center p-2 rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium"
                       >
                         Sign In
                       </Link>
@@ -169,22 +169,22 @@ export default function NavigationBar() {
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="outline" 
-                    className="border-[#78D5D7] dark:border-[#63D2FF]/50 text-[#4068ec] dark:text-[#63D2FF] hover:bg-[#78D5D7] dark:hover:bg-[#63D2FF]/20 hover:text-white dark:hover:text-white"
+                    className="border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                   >
                     <User className="h-4 w-4 mr-2" />
                     {session?.user?.name?.split(' ')[0] || 'Account'}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-                  <DropdownMenuItem asChild className="dark:text-gray-300 dark:focus:bg-gray-700 dark:focus:text-white">
+                <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <DropdownMenuItem asChild className="text-gray-900 dark:text-white focus:bg-gray-100 dark:focus:bg-gray-700">
                     <Link href="/dashboard">Dashboard</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="dark:text-gray-300 dark:focus:bg-gray-700 dark:focus:text-white">
+                  <DropdownMenuItem asChild className="text-gray-900 dark:text-white focus:bg-gray-100 dark:focus:bg-gray-700">
                     <Link href="/profile">Profile</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="dark:bg-gray-700" />
+                  <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
                   <DropdownMenuItem 
-                    className="text-red-600 dark:text-red-400 cursor-pointer dark:focus:bg-gray-700 dark:focus:text-red-300"
+                    className="text-red-600 dark:text-red-400 cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20"
                     onClick={() => signOut({ callbackUrl: '/' })}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
@@ -195,7 +195,7 @@ export default function NavigationBar() {
             ) : (
               <Button 
                 variant="outline" 
-                className="border-[#78D5D7] dark:border-[#63D2FF]/50 text-[#4068ec] dark:text-[#63D2FF] hover:bg-[#78D5D7] dark:hover:bg-[#63D2FF]/20 hover:text-white dark:hover:text-white"
+                className="border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
                 asChild
               >
                 <Link href="/auth/signin">Sign In</Link>
@@ -206,7 +206,7 @@ export default function NavigationBar() {
             <Button
               variant="ghost"
               size="icon"
-              className="text-[#4068ec] dark:text-[#63D2FF] hover:bg-[#BED8D4] dark:hover:bg-gray-800 hover:text-[#4068ec] dark:hover:text-[#63D2FF]"
+              className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               asChild
             >
               <Link href="/settings">

@@ -4,7 +4,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import NavigationBar from '@/components/navigation-bar';
-import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock } from 'lucide-react';
+import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock, X, Download } from 'lucide-react';
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -27,13 +28,28 @@ export default function Dashboard() {
     { language: 'English', proficiency: 'Native' }
   ]);
 
+  // Add state for onboarding data
+  const [onboardingData, setOnboardingData] = useState({
+    gpa: '',
+    testScores: { sat: '', act: '' },
+    majors: '',
+    careerGoals: '',
+    collegeSetting: '',
+    collegeType: '',
+    sportsPrograms: '',
+    extracurriculars: [],
+    additionalPreferences: ''
+  });
+
+  const [resumeUrl, setResumeUrl] = useState('');
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     }
   }, [status, router]);
 
-  // Add effect to fetch preferences
+  // Update the fetchPreferences effect
   useEffect(() => {
     const fetchPreferences = async () => {
       if (status === 'authenticated') {
@@ -43,17 +59,30 @@ export default function Dashboard() {
             throw new Error('Failed to fetch preferences');
           }
           const data = await response.json();
-          console.log("Data", data);
           if (data.preferences) {
             const prefs = data.preferences;
+            // Set academic metrics
             setAcademicMetrics({
               gpa: prefs.gpa || '',
-              satScore: prefs.satScore || '',
-              actScore: prefs.actScore || '',
+              satScore: prefs.testScores?.sat || '',
+              actScore: prefs.testScores?.act || '',
               classRank: prefs.classRank || ''
+            });
+            // Set onboarding data
+            setOnboardingData({
+              gpa: prefs.gpa || '',
+              testScores: prefs.testScores || { sat: '', act: '' },
+              majors: prefs.majors || '',
+              careerGoals: prefs.careerGoals || '',
+              collegeSetting: prefs.collegeSetting || '',
+              collegeType: prefs.collegeType || '',
+              sportsPrograms: prefs.sportsPrograms || '',
+              extracurriculars: prefs.extracurriculars || [],
+              additionalPreferences: prefs.additionalPreferences || ''
             });
             setAcademicNotes(prefs.academicNotes || '');
             setLanguages(prefs.languages || [{ language: 'English', proficiency: 'Native' }]);
+            setResumeUrl(prefs.resume || '');
           }
         } catch (err) {
           console.error('Error fetching preferences:', err);
@@ -176,6 +205,134 @@ export default function Dashboard() {
     }
   };
 
+  // Handler for onboarding data changes
+  const handleOnboardingChange = async (field, value) => {
+    const newData = {
+      ...onboardingData,
+      [field]: value
+    };
+    setOnboardingData(newData);
+    
+    // Save to database
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: {
+            ...academicMetrics,
+            academicNotes,
+            languages,
+            ...newData
+          }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save preferences');
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err);
+      // Optionally show an error message to the user
+    }
+  };
+
+  // Handler for adding extracurricular activity
+  const handleAddExtracurricular = () => {
+    setOnboardingData({
+      ...onboardingData,
+      extracurriculars: [...onboardingData.extracurriculars, '']
+    });
+  };
+
+  // Handler for removing extracurricular activity
+  const handleRemoveExtracurricular = (index) => {
+    const newExtracurriculars = onboardingData.extracurriculars.filter((_, i) => i !== index);
+    setOnboardingData({
+      ...onboardingData,
+      extracurriculars: newExtracurriculars
+    });
+  };
+
+  // Handler for updating extracurricular activity
+  const handleExtracurricularChange = (index, value) => {
+    const newExtracurriculars = [...onboardingData.extracurriculars];
+    newExtracurriculars[index] = value;
+    setOnboardingData({
+      ...onboardingData,
+      extracurriculars: newExtracurriculars
+    });
+  };
+
+  // Add handler for resume upload
+  const handleResumeUpload = async (file) => {
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/upload/resume', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        const data = await response.json();
+        setResumeUrl(data.fileUrl);
+        
+        // Save to preferences
+        await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            preferences: {
+              ...academicMetrics,
+              academicNotes,
+              languages,
+              resume: data.fileUrl
+            }
+          }),
+        });
+      } catch (err) {
+        console.error('Error uploading resume:', err);
+        // Optionally show an error message to the user
+      }
+    }
+  };
+
+  // Add handler for resume removal
+  const handleRemoveResume = async () => {
+    try {
+      setResumeUrl('');
+      
+      // Update preferences to remove resume
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          preferences: {
+            ...academicMetrics,
+            academicNotes,
+            languages,
+            resume: ''
+          }
+        }),
+      });
+    } catch (err) {
+      console.error('Error removing resume:', err);
+      // Optionally show an error message to the user
+    }
+  };
+
   if (status === 'loading') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
@@ -192,24 +349,24 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+    <div className="min-h-screen bg-white">
       <NavigationBar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#2081C3]">Welcome, {session.user.name || 'User'}!</h1>
-          <p className="text-[#2081C3]/80 mt-2">Manage your profile, applications, and saved colleges</p>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome, {session.user.name || 'User'}!</h1>
+          <p className="text-gray-900 mt-2">Manage your profile, applications, and saved colleges</p>
         </div>
         
         {/* Dashboard Tabs */}
-        <div className="mb-8 border-b border-[#BED8D4]">
+        <div className="mb-8 border-b border-gray-200">
           <div className="flex space-x-2 overflow-x-auto">
             <button 
               onClick={() => setActiveTab('profile')}
               className={`px-4 py-2 font-medium text-sm transition-colors ${
                 activeTab === 'profile' 
-                  ? 'text-[#2081C3] border-b-2 border-[#2081C3]' 
-                  : 'text-[#2081C3]/70 hover:text-[#2081C3]'
+                  ? 'text-gray-900 border-b-2 border-gray-900' 
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Academic Profile
@@ -218,8 +375,8 @@ export default function Dashboard() {
               onClick={() => setActiveTab('favorites')}
               className={`px-4 py-2 font-medium text-sm transition-colors ${
                 activeTab === 'favorites' 
-                  ? 'text-[#2081C3] border-b-2 border-[#2081C3]' 
-                  : 'text-[#2081C3]/70 hover:text-[#2081C3]'
+                  ? 'text-gray-900 border-b-2 border-gray-900' 
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Favorite Colleges
@@ -228,8 +385,8 @@ export default function Dashboard() {
               onClick={() => setActiveTab('applications')}
               className={`px-4 py-2 font-medium text-sm transition-colors ${
                 activeTab === 'applications' 
-                  ? 'text-[#2081C3] border-b-2 border-[#2081C3]' 
-                  : 'text-[#2081C3]/70 hover:text-[#2081C3]'
+                  ? 'text-gray-900 border-b-2 border-gray-900' 
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               Applications
@@ -239,10 +396,10 @@ export default function Dashboard() {
         
         {/* Academic Profile Tab */}
         {activeTab === 'profile' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-[#78D5D7]/30">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-[#2081C3]">Academic Profile</h2>
-              <button className="flex items-center text-[#2081C3] hover:text-[#2081C3]/80 transition-colors">
+              <h2 className="text-2xl font-semibold text-gray-900">Academic Profile</h2>
+              <button className="flex items-center text-gray-900 hover:text-gray-700 transition-colors">
                 <Edit className="h-4 w-4 mr-1" />
                 <span className="text-sm">Edit Profile</span>
               </button>
@@ -251,8 +408,8 @@ export default function Dashboard() {
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="w-8 h-8 border-2 border-[#2081C3] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-[#2081C3]/70">Loading your academic profile...</p>
+                  <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-gray-900">Loading your academic profile...</p>
                 </div>
               </div>
             ) : error ? (
@@ -269,98 +426,107 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Academic Metrics */}
                 <div>
-                  <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                     <GraduationCap className="h-5 w-5 mr-2" />
                     Academic Metrics
                   </h3>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">GPA</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">GPA</label>
                       <div className="flex items-center">
                         <input 
                           type="text" 
                           value={academicMetrics.gpa}
                           onChange={(e) => handleInputChange('gpa', e.target.value)}
-                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                          className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
                         />
-                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 4.0</span>
+                        <span className="text-xs text-gray-900 ml-2">/ 4.0</span>
                       </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">SAT Score</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">SAT Score</label>
                       <div className="flex items-center">
                         <input 
                           type="text" 
                           value={academicMetrics.satScore}
                           onChange={(e) => handleInputChange('satScore', e.target.value)}
-                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                          className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
                         />
-                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 1600</span>
+                        <span className="text-xs text-gray-900 ml-2">/ 1600</span>
                       </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">ACT Score</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">ACT Score</label>
                       <div className="flex items-center">
                         <input 
                           type="text" 
                           value={academicMetrics.actScore}
                           onChange={(e) => handleInputChange('actScore', e.target.value)}
-                          className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                          className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
                         />
-                        <span className="text-xs text-[#2081C3]/60 ml-2">/ 36</span>
+                        <span className="text-xs text-gray-900 ml-2">/ 36</span>
                       </div>
                     </div>
-                    
-            
                   </div>
                 </div>
                 
-                {/* Documents */}
+                {/* College Preferences */}
                 <div>
-                  <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
-                    <FileText className="h-5 w-5 mr-2" />
-                    Documents
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                    <GraduationCap className="h-5 w-5 mr-2" />
+                    College Preferences
                   </h3>
                   
                   <div className="space-y-4">
-                    <div className="border border-dashed border-[#BED8D4] rounded-lg p-6 bg-white/30 text-center">
-                      <Upload className="h-8 w-8 mx-auto text-[#2081C3]/60 mb-2" />
-                      <h4 className="text-sm font-medium text-[#2081C3] mb-1">Upload Resume</h4>
-                      <p className="text-xs text-[#2081C3]/60 mb-3">PDF, DOC or DOCX up to 5MB</p>
-                      <button className="bg-[#2081C3]/10 text-[#2081C3] px-4 py-2 rounded-md text-sm hover:bg-[#2081C3]/20 transition-colors">
-                        Select File
-                      </button>
+                    
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">College Type</label>
+                      <select
+                        value={onboardingData.collegeType}
+                        onChange={(e) => handleOnboardingChange('collegeType', e.target.value)}
+                        className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
+                      >
+                        <option value="">Select type</option>
+                        <option value="Public">Public</option>
+                        <option value="Private">Private</option>
+                        <option value="Liberal Arts">Liberal Arts</option>
+                        <option value="Research University">Research University</option>
+                      </select>
                     </div>
                     
-                    <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
-                      <div className="flex items-center">
-                        <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
-                          <FileText className="h-5 w-5 text-[#2081C3]" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-[#2081C3]">Personal Statement.pdf</h4>
-                          <p className="text-xs text-[#2081C3]/60">Uploaded on May 15, 2023</p>
-                        </div>
-                        <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="border border-[#BED8D4] rounded-lg p-4 bg-white/50">
-                      <div className="flex items-center">
-                        <div className="bg-[#2081C3]/10 p-2 rounded-md mr-3">
-                          <BookOpen className="h-5 w-5 text-[#2081C3]" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-[#2081C3]">Transcript.pdf</h4>
-                          <p className="text-xs text-[#2081C3]/60">Uploaded on May 10, 2023</p>
-                        </div>
-                        <button className="text-[#2081C3]/70 hover:text-[#2081C3] transition-colors">
-                          <Edit className="h-4 w-4" />
+            
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Extracurriculars</label>
+                      <div className="space-y-2">
+                        {onboardingData.extracurriculars.map((activity, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={activity}
+                              onChange={(e) => handleExtracurricularChange(index, e.target.value)}
+                              placeholder="Enter activity"
+                              className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
+                            />
+                            <button
+                              onClick={() => handleRemoveExtracurricular(index)}
+                              className="text-red-500 hover:text-red-600 transition-colors"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={handleAddExtracurricular}
+                          className="flex items-center text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors"
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Activity
                         </button>
                       </div>
                     </div>
@@ -370,40 +536,40 @@ export default function Dashboard() {
             )}
             
             {/* Academic Notes Section */}
-            <div className="mt-8 border-t border-[#BED8D4] pt-8">
-              <h3 className="text-lg font-medium text-[#2081C3] mb-4 flex items-center">
+            <div className="mt-8 border-t border-gray-200 pt-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                 <FileText className="h-5 w-5 mr-2" />
                 Academic Notes
               </h3>
-              <p className="text-sm text-[#2081C3]/70 mb-4">
+              <p className="text-sm text-gray-900 mb-4">
                 Add specific notes about your academic interests, achievements, or goals to help our AI provide better college recommendations.
               </p>
-              <div className="bg-white/50 border border-[#BED8D4] rounded-md p-4">
+              <div className="bg-white border border-gray-300 rounded-md p-4">
                 <textarea
                   value={academicNotes}
                   onChange={(e) => handleNotesChange(e.target.value)}
                   placeholder="E.g., I'm passionate about environmental science and have participated in several research projects. I'm looking for colleges with strong sustainability programs..."
-                  className="w-full h-32 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-[#2081C3] placeholder-[#2081C3]/40"
+                  className="w-full h-32 bg-transparent border-none resize-none focus:outline-none focus:ring-0 text-gray-900 placeholder-gray-400"
                 ></textarea>
               </div>
             </div>
             
             {/* Languages Section */}
-            <div className="mt-8 border-t border-[#BED8D4] pt-8">
+            <div className="mt-8 border-t border-gray-200 pt-8">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-[#2081C3] flex items-center">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <BookOpen className="h-5 w-5 mr-2" />
                   Languages
                 </h3>
                 <button 
                   onClick={addLanguage}
-                  className="flex items-center text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors"
+                  className="flex items-center text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors"
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Language
                 </button>
               </div>
-              <p className="text-sm text-[#2081C3]/70 mb-4">
+              <p className="text-sm text-gray-900 mb-4">
                 List languages you speak and your proficiency level. This information helps match you with programs that value language skills.
               </p>
               
@@ -411,21 +577,21 @@ export default function Dashboard() {
                 {languages.map((lang, index) => (
                   <div key={index} className="flex items-center gap-4">
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">Language</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Language</label>
                       <input
                         type="text"
                         value={lang.language}
                         onChange={(e) => handleLanguageChange(index, 'language', e.target.value)}
                         placeholder="Language"
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
                       />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-[#2081C3]/80 mb-1">Proficiency</label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Proficiency</label>
                       <select
                         value={lang.proficiency}
                         onChange={(e) => handleLanguageChange(index, 'proficiency', e.target.value)}
-                        className="bg-white/50 border border-[#BED8D4] rounded-md py-2 px-3 text-[#2081C3] w-full focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
                       >
                         <option value="">Select proficiency</option>
                         <option value="Native">Native</option>
@@ -449,15 +615,68 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
+            
+            {/* Resume Section */}
+            <div className="mt-8 border-t border-gray-200 pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Resume
+                </h3>
+              </div>
+              <p className="text-sm text-gray-900 mb-4">
+                Upload your resume to help us better understand your academic and extracurricular achievements.
+              </p>
+              
+              {resumeUrl ? (
+                <div className="w-full p-4 border-2 border-gray-200 rounded-xl bg-gray-50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <Check className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Resume uploaded</p>
+                        <p className="text-xs text-gray-500">
+                          Last updated: {new Date(parseInt(resumeUrl.split('-')[1])).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <a
+                        href={resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Download className="h-5 w-5 text-gray-900" />
+                      </a>
+                      <button
+                        onClick={handleRemoveResume}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <X className="h-5 w-5 text-gray-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <FileUpload
+                  onFileSelect={handleResumeUpload}
+                  accept=".pdf,.doc,.docx"
+                  maxSize={5}
+                />
+              )}
+            </div>
           </div>
         )}
         
         {/* Favorite Colleges Tab */}
         {activeTab === 'favorites' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-[#78D5D7]/30">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-[#2081C3]">Favorite Colleges</h2>
-              <button className="flex items-center text-white bg-[#2081C3] hover:bg-[#2081C3]/90 transition-colors px-3 py-1.5 rounded-md text-sm">
+              <h2 className="text-2xl font-semibold text-gray-900">Favorite Colleges</h2>
+              <button className="flex items-center text-white bg-gray-900 hover:bg-gray-800 transition-colors px-3 py-1.5 rounded-md text-sm">
                 <Plus className="h-4 w-4 mr-1" />
                 <span>Add College</span>
               </button>
@@ -465,27 +684,27 @@ export default function Dashboard() {
             
             <div className="space-y-4">
               {/* College Card */}
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#2081C3]/10 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-[#2081C3]" />
+                  <div className="bg-gray-100 p-3 rounded-md mr-4">
+                    <GraduationCap className="h-6 w-6 text-gray-900" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">Stanford University</h3>
-                      <button className="text-[#2081C3] hover:text-[#2081C3]/80 transition-colors">
-                        <Heart className="h-5 w-5 fill-[#2081C3]" />
+                      <h3 className="text-lg font-medium text-gray-900">Stanford University</h3>
+                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
+                        <Heart className="h-5 w-5 fill-gray-900" />
                       </button>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Stanford, CA • Private Research University</p>
+                    <p className="text-sm text-gray-600 mb-3">Stanford, CA • Private Research University</p>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Top 5 National</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">4% Acceptance</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Computer Science</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 5 National</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">4% Acceptance</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Computer Science</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#2081C3]/80">Added on May 20, 2023</span>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <span className="text-sm text-gray-600">Added on May 20, 2023</span>
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         View Details
                       </button>
                     </div>
@@ -493,27 +712,27 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#2081C3]/10 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-[#2081C3]" />
+                  <div className="bg-gray-100 p-3 rounded-md mr-4">
+                    <GraduationCap className="h-6 w-6 text-gray-900" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">MIT</h3>
-                      <button className="text-[#2081C3] hover:text-[#2081C3]/80 transition-colors">
-                        <Heart className="h-5 w-5 fill-[#2081C3]" />
+                      <h3 className="text-lg font-medium text-gray-900">MIT</h3>
+                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
+                        <Heart className="h-5 w-5 fill-gray-900" />
                       </button>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Cambridge, MA • Private Research University</p>
+                    <p className="text-sm text-gray-600 mb-3">Cambridge, MA • Private Research University</p>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Top 5 National</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">7% Acceptance</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Engineering</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 5 National</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">7% Acceptance</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Engineering</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#2081C3]/80">Added on May 18, 2023</span>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <span className="text-sm text-gray-600">Added on May 18, 2023</span>
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         View Details
                       </button>
                     </div>
@@ -521,27 +740,27 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#2081C3]/10 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-[#2081C3]" />
+                  <div className="bg-gray-100 p-3 rounded-md mr-4">
+                    <GraduationCap className="h-6 w-6 text-gray-900" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">UC Berkeley</h3>
-                      <button className="text-[#2081C3] hover:text-[#2081C3]/80 transition-colors">
-                        <Heart className="h-5 w-5 fill-[#2081C3]" />
+                      <h3 className="text-lg font-medium text-gray-900">UC Berkeley</h3>
+                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
+                        <Heart className="h-5 w-5 fill-gray-900" />
                       </button>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Berkeley, CA • Public Research University</p>
+                    <p className="text-sm text-gray-600 mb-3">Berkeley, CA • Public Research University</p>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Top 20 National</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">16% Acceptance</span>
-                      <span className="bg-[#2081C3]/10 text-[#2081C3] text-xs px-2 py-1 rounded-md">Business</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 20 National</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">16% Acceptance</span>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Business</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#2081C3]/80">Added on May 15, 2023</span>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <span className="text-sm text-gray-600">Added on May 15, 2023</span>
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         View Details
                       </button>
                     </div>
@@ -554,10 +773,10 @@ export default function Dashboard() {
         
         {/* Applications Tab */}
         {activeTab === 'applications' && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-[#78D5D7]/30">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-[#2081C3]">Applications</h2>
-              <button className="flex items-center text-white bg-[#2081C3] hover:bg-[#2081C3]/90 transition-colors px-3 py-1.5 rounded-md text-sm">
+              <h2 className="text-2xl font-semibold text-gray-900">Applications</h2>
+              <button className="flex items-center text-white bg-gray-900 hover:bg-gray-800 transition-colors px-3 py-1.5 rounded-md text-sm">
                 <Plus className="h-4 w-4 mr-1" />
                 <span>New Application</span>
               </button>
@@ -565,36 +784,36 @@ export default function Dashboard() {
             
             <div className="space-y-4">
               {/* Application Card */}
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#63D2FF]/20 p-3 rounded-md mr-4">
-                    <Check className="h-6 w-6 text-[#63D2FF]" />
+                  <div className="bg-green-100 p-3 rounded-md mr-4">
+                    <Check className="h-6 w-6 text-green-600" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">Stanford University</h3>
+                      <h3 className="text-lg font-medium text-gray-900">Stanford University</h3>
                       <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Submitted</span>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Early Decision • Computer Science</p>
+                    <p className="text-sm text-gray-600 mb-3">Early Decision • Computer Science</p>
                     <div className="flex flex-wrap gap-4 mb-3">
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Application Deadline</p>
-                        <p className="text-sm text-[#2081C3]">November 1, 2023</p>
+                        <p className="text-xs text-gray-500">Application Deadline</p>
+                        <p className="text-sm text-gray-900">November 1, 2023</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Date Submitted</p>
-                        <p className="text-sm text-[#2081C3]">October 25, 2023</p>
+                        <p className="text-xs text-gray-500">Date Submitted</p>
+                        <p className="text-sm text-gray-900">October 25, 2023</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Decision Date</p>
-                        <p className="text-sm text-[#2081C3]">December 15, 2023</p>
+                        <p className="text-xs text-gray-500">Decision Date</p>
+                        <p className="text-sm text-gray-900">December 15, 2023</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="w-1/2 bg-gray-200 rounded-full h-2">
                         <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
                       </div>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         View Details
                       </button>
                     </div>
@@ -602,36 +821,36 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#78D5D7]/20 p-3 rounded-md mr-4">
-                    <Clock className="h-6 w-6 text-[#78D5D7]" />
+                  <div className="bg-gray-100 p-3 rounded-md mr-4">
+                    <Clock className="h-6 w-6 text-gray-900" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">MIT</h3>
-                      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">In Progress</span>
+                      <h3 className="text-lg font-medium text-gray-900">MIT</h3>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-full">In Progress</span>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Regular Decision • Engineering</p>
+                    <p className="text-sm text-gray-600 mb-3">Regular Decision • Engineering</p>
                     <div className="flex flex-wrap gap-4 mb-3">
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Application Deadline</p>
-                        <p className="text-sm text-[#2081C3]">January 5, 2024</p>
+                        <p className="text-xs text-gray-500">Application Deadline</p>
+                        <p className="text-sm text-gray-900">January 5, 2024</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Date Started</p>
-                        <p className="text-sm text-[#2081C3]">October 10, 2023</p>
+                        <p className="text-xs text-gray-500">Date Started</p>
+                        <p className="text-sm text-gray-900">October 10, 2023</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Decision Date</p>
-                        <p className="text-sm text-[#2081C3]">March 15, 2024</p>
+                        <p className="text-xs text-gray-500">Decision Date</p>
+                        <p className="text-sm text-gray-900">March 15, 2024</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="w-1/2 bg-gray-200 rounded-full h-2">
-                        <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '65%' }}></div>
+                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: '65%' }}></div>
                       </div>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         Continue
                       </button>
                     </div>
@@ -639,36 +858,36 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              <div className="border border-[#BED8D4] rounded-lg p-5 bg-white/50 hover:shadow-md transition-all">
+              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
                 <div className="flex items-start">
-                  <div className="bg-[#BED8D4]/30 p-3 rounded-md mr-4">
-                    <Edit className="h-6 w-6 text-[#BED8D4]" />
+                  <div className="bg-gray-100 p-3 rounded-md mr-4">
+                    <Edit className="h-6 w-6 text-gray-900" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-[#2081C3]">UC Berkeley</h3>
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Not Started</span>
+                      <h3 className="text-lg font-medium text-gray-900">UC Berkeley</h3>
+                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-full">Not Started</span>
                     </div>
-                    <p className="text-sm text-[#2081C3]/70 mb-3">Regular Decision • Business</p>
+                    <p className="text-sm text-gray-600 mb-3">Regular Decision • Business</p>
                     <div className="flex flex-wrap gap-4 mb-3">
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Application Deadline</p>
-                        <p className="text-sm text-[#2081C3]">November 30, 2023</p>
+                        <p className="text-xs text-gray-500">Application Deadline</p>
+                        <p className="text-sm text-gray-900">November 30, 2023</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Date Added</p>
-                        <p className="text-sm text-[#2081C3]">October 5, 2023</p>
+                        <p className="text-xs text-gray-500">Date Added</p>
+                        <p className="text-sm text-gray-900">October 5, 2023</p>
                       </div>
                       <div>
-                        <p className="text-xs text-[#2081C3]/60">Decision Date</p>
-                        <p className="text-sm text-[#2081C3]">March 31, 2024</p>
+                        <p className="text-xs text-gray-500">Decision Date</p>
+                        <p className="text-sm text-gray-900">March 31, 2024</p>
                       </div>
                     </div>
                     <div className="flex justify-between items-center">
                       <div className="w-1/2 bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: '0%' }}></div>
                       </div>
-                      <button className="text-[#2081C3] hover:bg-[#2081C3]/10 px-3 py-1 rounded-md text-sm transition-colors">
+                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
                         Start Application
                       </button>
                     </div>

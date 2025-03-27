@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
 
 const onboardingQuestions = [
   {
@@ -103,6 +104,21 @@ const onboardingQuestions = [
     isRequired: false,
   },
   {
+    id: "resume",
+    question: "Would you like to upload your resume?",
+    description: "Upload your resume to help us better understand your academic and extracurricular achievements. We accept PDF, DOC, and DOCX files.",
+    type: "file",
+    isRequired: false,
+  },
+  {
+    id: "academicNotes",
+    question: "Tell us about your academic interests and achievements",
+    description: "Share specific details about your academic interests, achievements, or goals to help us provide better college recommendations.",
+    type: "textarea",
+    placeholder: "E.g., I'm passionate about environmental science and have participated in several research projects. I'm looking for colleges with strong sustainability programs...",
+    isRequired: false,
+  },
+  {
     id: "additionalPreferences",
     question: "Is there anything else that's important to you in your college search?",
     description: "Feel free to share any unique preferences or requirements.",
@@ -120,6 +136,8 @@ export function OnboardingFlow({ onComplete }) {
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState(null);
 
   useEffect(() => {
     if (showWelcome) {
@@ -160,7 +178,36 @@ export function OnboardingFlow({ onComplete }) {
     });
   };
 
-  const handleNext = () => {
+  const handleFileSelect = async (file) => {
+    setError("");
+    if (file) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/upload/resume', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to upload file');
+        }
+
+        const data = await response.json();
+        setUploadedFile(data.fileUrl);
+        handleAnswerChange(data.fileUrl);
+      } catch (err) {
+        console.error('Error uploading file:', err);
+        setError('Failed to upload file. Please try again.');
+      }
+    } else {
+      setUploadedFile(null);
+      handleAnswerChange("");
+    }
+  };
+
+  const handleNext = async () => {
     const currentQuestion = onboardingQuestions[currentQuestionIndex];
     
     // Validate required fields
@@ -190,9 +237,40 @@ export function OnboardingFlow({ onComplete }) {
       );
     } else {
       // All questions answered
-      setOpen(false);
-      if (onComplete) {
-        onComplete(answers);
+      setIsSaving(true);
+      try {
+        const finalAnswers = {
+          ...answers,
+          [currentQuestion.id]: currentAnswer // Add the last answer
+        };
+        
+        // Save to database
+        const response = await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            preferences: {
+              ...finalAnswers,
+              academicNotes: finalAnswers.academicNotes || "" // Ensure academicNotes is included
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save preferences');
+        }
+
+        setOpen(false);
+        if (onComplete) {
+          onComplete(finalAnswers);
+        }
+      } catch (err) {
+        console.error('Error saving preferences:', err);
+        setError('Failed to save your answers. Please try again.');
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -242,19 +320,19 @@ export function OnboardingFlow({ onComplete }) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.5 }}
-          className="flex flex-col items-center justify-center text-center p-6"
+          className="flex flex-col items-center justify-center text-center p-8"
         >
-          <div className="text-3xl font-bold bg-gradient-to-r from-[#4068ec] to-[#63D2FF] bg-clip-text text-transparent mb-4">
+          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
             Let's get to know you
           </div>
-          <p className="text-gray-600 dark:text-gray-300 mb-8">
+          <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-md">
             I want to ask you a few questions to get a better understanding of you so that I can deliver the best college search results
           </p>
           <Button 
             onClick={() => setShowWelcome(false)}
-            className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90"
+            className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 px-8 py-6 text-lg rounded-xl transition-all duration-300"
           >
-            Let's Get Started <ChevronRight className="ml-2 h-4 w-4" />
+            Let's Get Started <ChevronRight className="ml-2 h-5 w-5" />
           </Button>
         </motion.div>
       );
@@ -269,13 +347,13 @@ export function OnboardingFlow({ onComplete }) {
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -50 }}
         transition={{ duration: 0.3 }}
-        className="p-6"
+        className="p-8"
       >
-        <h2 className="text-2xl font-semibold text-[#4068ec] dark:text-[#63D2FF] mb-2">{currentQuestion.question}</h2>
-        <p className="text-gray-600 dark:text-gray-400 mb-6">{currentQuestion.description}</p>
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">{currentQuestion.question}</h2>
+        <p className="text-gray-600 dark:text-gray-400 mb-8">{currentQuestion.description}</p>
         
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 text-red-600 dark:text-red-400 px-4 py-2 rounded-md mb-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
@@ -285,7 +363,7 @@ export function OnboardingFlow({ onComplete }) {
             placeholder={currentQuestion.placeholder}
             value={currentAnswer || ""}
             onChange={(e) => handleAnswerChange(e.target.value)}
-            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
+            className="w-full mb-6 border-gray-200 dark:border-gray-700 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white py-6 text-base rounded-xl"
           />
         )}
 
@@ -294,7 +372,7 @@ export function OnboardingFlow({ onComplete }) {
             placeholder={currentQuestion.placeholder}
             value={currentAnswer || ""}
             onChange={(e) => handleAnswerChange(e.target.value)}
-            className="w-full mb-6 border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
+            className="w-full mb-6 border-gray-200 dark:border-gray-700 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white py-6 text-base rounded-xl min-h-[120px]"
           />
         )}
 
@@ -302,7 +380,7 @@ export function OnboardingFlow({ onComplete }) {
           <div className="space-y-4 mb-6">
             {currentQuestion.fields.map((field) => (
               <div key={field.id}>
-                <Label htmlFor={field.id} className="text-[#4068ec] dark:text-[#63D2FF] mb-1 block">
+                <Label htmlFor={field.id} className="text-gray-900 dark:text-white mb-2 block text-sm font-medium">
                   {field.label}
                 </Label>
                 <Input
@@ -310,7 +388,7 @@ export function OnboardingFlow({ onComplete }) {
                   placeholder={field.placeholder}
                   value={(currentAnswer && currentAnswer[field.id]) || ""}
                   onChange={(e) => handleAnswerChange(e.target.value, field.id)}
-                  className="w-full border-[#BED8D4] focus:ring-[#63D2FF] text-[#4068ec]"
+                  className="w-full border-gray-200 dark:border-gray-700 focus:ring-gray-900 dark:focus:ring-white text-gray-900 dark:text-white py-6 text-base rounded-xl"
                 />
               </div>
             ))}
@@ -321,16 +399,16 @@ export function OnboardingFlow({ onComplete }) {
           <RadioGroup
             value={currentAnswer || ""}
             onValueChange={handleAnswerChange}
-            className="space-y-3 mb-6"
+            className="space-y-4 mb-6"
           >
             {currentQuestion.options.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
+              <div key={option.value} className="flex items-center space-x-3">
                 <RadioGroupItem
                   value={option.value}
                   id={option.value}
-                  className="border-[#BED8D4] text-[#4068ec]"
+                  className="border-gray-300 text-gray-900 dark:text-white"
                 />
-                <Label htmlFor={option.value} className="text-[#4068ec] dark:text-[#63D2FF]">
+                <Label htmlFor={option.value} className="text-gray-900 dark:text-white text-base">
                   {option.label}
                 </Label>
               </div>
@@ -339,16 +417,16 @@ export function OnboardingFlow({ onComplete }) {
         )}
 
         {currentQuestion.type === "checkbox" && (
-          <div className="space-y-3 mb-6">
+          <div className="space-y-4 mb-6">
             {currentQuestion.options.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
+              <div key={option.value} className="flex items-center space-x-3">
                 <Checkbox
                   id={option.value}
                   checked={Array.isArray(currentAnswer) && currentAnswer.includes(option.value)}
                   onCheckedChange={(checked) => handleCheckboxChange(option.value, checked)}
-                  className="border-[#BED8D4] text-[#4068ec]"
+                  className="border-gray-300 text-gray-900 dark:text-white"
                 />
-                <Label htmlFor={option.value} className="text-[#4068ec] dark:text-[#63D2FF]">
+                <Label htmlFor={option.value} className="text-gray-900 dark:text-white text-base">
                   {option.label}
                 </Label>
               </div>
@@ -356,33 +434,41 @@ export function OnboardingFlow({ onComplete }) {
           </div>
         )}
 
-        <div className="flex justify-between items-center mt-6">
+        {currentQuestion.type === "file" && (
+          <FileUpload
+            onFileSelect={handleFileSelect}
+            accept=".pdf,.doc,.docx"
+            maxSize={5}
+          />
+        )}
+
+        <div className="flex justify-between items-center mt-8">
           <Button
             variant="outline"
             onClick={handlePrevious}
-            className="border-[#BED8D4] text-[#4068ec] hover:bg-[#BED8D4]/20"
+            className="border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 py-6 px-8 rounded-xl transition-all duration-300"
           >
-            <ChevronLeft className="mr-2 h-4 w-4" />
+            <ChevronLeft className="mr-2 h-5 w-5" />
             Back
           </Button>
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
             {!currentQuestion.isRequired && (
               <Button
                 variant="ghost"
                 onClick={handleSkip}
-                className="text-gray-500"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-6 px-8 rounded-xl"
               >
                 Skip
               </Button>
             )}
             <Button
               onClick={handleNext}
-              className="bg-gradient-to-r from-[#4068ec] to-[#63D2FF] text-white hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90"
+              className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 py-6 px-8 rounded-xl transition-all duration-300"
             >
               {currentQuestionIndex < onboardingQuestions.length - 1 ? (
-                <>Next <ChevronRight className="ml-2 h-4 w-4" /></>
+                <>Next <ChevronRight className="ml-2 h-5 w-5" /></>
               ) : (
-                <>Complete <Check className="ml-2 h-4 w-4" /></>
+                <>Complete <Check className="ml-2 h-5 w-5" /></>
               )}
             </Button>
           </div>
@@ -393,7 +479,7 @@ export function OnboardingFlow({ onComplete }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-[600px] p-0 bg-white dark:bg-gray-900 border-0 rounded-xl overflow-hidden shadow-2xl">
+      <DialogContent className="sm:max-w-[600px] p-0 bg-white dark:bg-gray-900 border-0 rounded-2xl overflow-hidden shadow-lg">
         <DialogTitle className="sr-only">
           {showWelcome ? "Welcome to CollegeAdmit.AI" : onboardingQuestions[currentQuestionIndex].question}
         </DialogTitle>
@@ -403,9 +489,9 @@ export function OnboardingFlow({ onComplete }) {
         
         {/* Progress bar */}
         {!showWelcome && (
-          <div className="w-full h-1 bg-gray-200 dark:bg-gray-800">
+          <div className="w-full h-1 bg-gray-100 dark:bg-gray-800">
             <motion.div
-              className="h-full bg-gradient-to-r from-[#4068ec] to-[#63D2FF]"
+              className="h-full bg-gray-900 dark:bg-white"
               initial={{ width: `${progress}%` }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}

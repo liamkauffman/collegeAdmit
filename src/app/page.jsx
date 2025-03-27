@@ -205,16 +205,6 @@ export default function Home() {
       
       <main className="flex-1 relative">
         <div className="flex flex-col lg:flex-row h-full">
-          {/* Sidebar - Only visible on large screens by default */}
-          <div className="hidden lg:block lg:w-64 xl:w-72 lg:border-r border-[#BED8D4] dark:border-gray-800 bg-white dark:bg-gray-950 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto scrollbar-hide">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-4 text-[#4068ec] dark:text-[#63D2FF]">Find Your College</h2>
-              <div>
-                <SearchForm isSidebar={true} />
-              </div>
-            </div>
-          </div>
-          
           {/* Main Content */}
           <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden">
             {/* Loading State */}
@@ -248,7 +238,7 @@ export default function Home() {
             {!isLoading && !error && currentStep === "initial" && (
               <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20">
                 <div className="w-full max-w-2xl px-4 sm:px-6 py-8 flex flex-col items-center justify-center">
-                  <h1 className="text-center text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white mb-8 pb-2 bg-clip-text text-transparent bg-gradient-to-r from-[#4068ec] to-[#63D2FF] leading-tight">
+                  <h1 className="text-center text-4xl sm:text-5xl md:text-6xl font-extrabold text-black dark:text-white mb-8 pb-2 leading-tight">
                     Find Your Perfect College Match
                   </h1>
                   <form onSubmit={handleInitialSearch} className="w-full">
@@ -256,13 +246,13 @@ export default function Home() {
                       <input 
                         type="text" 
                         placeholder="What type of colleges are you looking for?" 
-                        className="w-full py-4 sm:py-6 px-4 sm:px-7 text-base sm:text-lg rounded-xl border border-[#BED8D4]/50 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#4068ec] dark:text-[#63D2FF] placeholder-[#4068ec]/60 dark:placeholder-[#63D2FF]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                        className="w-full py-4 sm:py-6 px-4 sm:px-7 text-base sm:text-lg rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all"
                         value={initialQuery}
                         onChange={(e) => setInitialQuery(e.target.value)}
                       />
                       <button 
                         type="submit"
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-[#4068ec]/5 dark:bg-[#63D2FF]/5 hover:bg-[#4068ec]/15 dark:hover:bg-[#63D2FF]/15 text-[#4068ec] dark:text-[#63D2FF] p-2 sm:p-2.5 rounded-lg transition-all"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-900 p-2 sm:p-2.5 rounded-lg transition-all"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -271,11 +261,6 @@ export default function Home() {
                     </div>
                   </form>
                   
-                  <div className="flex justify-center mt-6">
-                    <div className="w-2 h-2 rounded-full bg-[#78D5D7] dark:bg-[#78D5D7]/70 mx-1"></div>
-                    <div className="w-2 h-2 rounded-full bg-[#63D2FF] dark:bg-[#63D2FF]/70 mx-1"></div>
-                    <div className="w-2 h-2 rounded-full bg-[#4068ec] dark:bg-[#4068ec]/70 mx-1"></div>
-                  </div>
                 </div>
               </div>
             )}
@@ -283,41 +268,48 @@ export default function Home() {
             {/* Follow-up Questions State */}
             {!isLoading && !error && currentStep === "followup" && followUpQuestions.length > 0 && (
               <div className="flex items-center justify-center min-h-[70vh] h-full pb-10 sm:pb-20">
-                <div className="w-full max-w-2xl px-4 sm:px-6 py-8 flex flex-col items-center justify-center">
-                  <div className="w-full">
+                <div className="w-full max-w-3xl px-4 sm:px-6 py-8">
+                  <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                    {/* Progress Section */}
                     <div className="mb-8">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-[#4068ec] to-[#63D2FF]">
-                        {followUpQuestions[currentQuestionIndex]?.text || "Additional Information"}
-                      </h2>
-                      <div className="h-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                          {followUpQuestions[currentQuestionIndex]?.text || "Additional Information"}
+                        </h2>
+                        <span className="text-sm font-medium text-gray-900">
+                          {currentQuestionIndex + 1}/{followUpQuestions.length}
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-[#4068ec] to-[#63D2FF] rounded-full"
+                          className="h-full bg-gray-900 rounded-full transition-all duration-300"
                           style={{ width: `${((currentQuestionIndex + 1) / followUpQuestions.length) * 100}%` }}
                         ></div>
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                        Question {currentQuestionIndex + 1} of {followUpQuestions.length}
-                      </p>
                     </div>
                     
-                    <div className="relative">
-                      <textarea 
-                        placeholder="Your answer..."
-                        className="w-full py-4 px-5 text-base rounded-xl border border-[#BED8D4]/50 dark:border-gray-700 bg-white dark:bg-gray-900 text-[#4068ec] dark:text-[#63D2FF] placeholder-[#4068ec]/60 dark:placeholder-[#63D2FF]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all min-h-[150px] shadow-sm"
-                        value={currentAnswer}
-                        onChange={(e) => setCurrentAnswer(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            handleFollowUpAnswer();
-                          }
-                        }}
-                      />
-                      <div className="flex justify-center mt-5">
+                    {/* Answer Section */}
+                    <div className="space-y-6">
+                      <div className="relative">
+                        <textarea 
+                          placeholder="Type your answer here..."
+                          className="w-full py-4 px-6 text-base rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all min-h-[180px] shadow-sm resize-none"
+                          value={currentAnswer}
+                          onChange={(e) => setCurrentAnswer(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleFollowUpAnswer();
+                            }
+                          }}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-end">
                         <Button 
                           onClick={handleFollowUpAnswer}
-                          className="px-6 py-3 text-base font-medium text-white bg-gradient-to-r from-[#4068ec] to-[#63D2FF] rounded-md shadow hover:from-[#4068ec]/90 hover:to-[#63D2FF]/90 focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:ring-offset-2 transition-all duration-300 flex items-center gap-2"
+                          className="px-8 py-3 text-base font-medium text-white bg-gray-900 rounded-xl shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all duration-300 flex items-center gap-2"
                         >
                           {currentQuestionIndex === followUpQuestions.length - 1 ? (
                             <>

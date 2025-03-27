@@ -186,8 +186,6 @@ export function CollegeCard({ college, type = "normal" }) {
           {college.ai_insight && (
             <div className="mt-3 bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-md">
               <div className="flex items-center gap-1 text-blue-600 text-xs font-medium">
-                <Sparkles className="h-3 w-3" />
-                <span>AI Insight</span>
               </div>
               <p className="text-sm text-gray-700">{college.ai_insight}</p>
             </div>

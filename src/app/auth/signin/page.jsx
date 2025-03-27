@@ -39,19 +39,19 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+    <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white">
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center">
           <div className="flex items-center justify-center mb-4">
             <SvgLogo />
-            <span className="text-2xl font-bold text-[#4068ec] ml-3">CollegeAdmit.AI</span>
+            <span className="text-2xl font-bold text-gray-900 ml-3">CollegeAdmit.AI</span>
           </div>
-          <h2 className="text-center text-3xl font-bold tracking-tight text-[#4068ec]">
+          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
             Sign in to your account
           </h2>
-          <p className="mt-2 text-center text-sm text-[#4068ec]/80">
+          <p className="mt-2 text-center text-sm text-gray-900">
             Or{' '}
-            <Link href="/auth/signup" className="font-medium text-[#63D2FF] hover:text-[#78D5D7]">
+            <Link href="/auth/signup" className="font-medium text-gray-900 hover:text-gray-700">
               create a new account
             </Link>
           </p>
@@ -67,11 +67,11 @@ export default function SignIn() {
           </div>
         )}
         
-        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-[#78D5D7]/30">
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-8 border border-gray-200">
           <form className="space-y-6 auth-form" onSubmit={handleSubmit}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email-address" className="block text-sm font-medium text-[#4068ec]">
+                <label htmlFor="email-address" className="block text-sm font-medium text-gray-900">
                   Email address
                 </label>
                 <input
@@ -80,14 +80,14 @@ export default function SignIn() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#4068ec] bg-white/50 placeholder:text-[#4068ec]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                  className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 text-gray-900 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-[#4068ec]">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-900">
                   Password
                 </label>
                 <input
@@ -96,7 +96,7 @@ export default function SignIn() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="mt-1 block w-full rounded-md border border-[#BED8D4] py-2 px-3 text-[#4068ec] bg-white/50 placeholder:text-[#4068ec]/60 focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF] transition-all"
+                  className="mt-1 block w-full rounded-md border border-gray-300 py-2 px-3 text-gray-900 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -112,13 +112,13 @@ export default function SignIn() {
                   type="checkbox"
                   className="h-4 w-4"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-[#4068ec]">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                   Remember me
                 </label>
               </div>
 
               <div className="text-sm">
-                <Link href="/auth/forgot-password" className="font-medium text-[#63D2FF] hover:text-[#78D5D7]">
+                <Link href="/auth/forgot-password" className="font-medium text-gray-900 hover:text-gray-700">
                   Forgot your password?
                 </Link>
               </div>
@@ -128,7 +128,7 @@ export default function SignIn() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="group relative flex w-full justify-center rounded-md bg-[#4068ec] px-3 py-2 text-sm font-semibold text-white hover:bg-[#4068ec]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4068ec] disabled:bg-[#4068ec]/70 transition-colors"
+                className="group relative flex w-full justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:bg-gray-400 transition-colors"
               >
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </button>
@@ -137,7 +137,7 @@ export default function SignIn() {
         </div>
         
         <div className="text-center">
-          <Link href="/" className="text-sm text-[#4068ec]/80 hover:text-[#4068ec]">
+          <Link href="/" className="text-sm text-gray-900 hover:text-gray-700">
             ← Back to home
           </Link>
         </div>

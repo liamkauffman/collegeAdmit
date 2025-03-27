@@ -100,14 +100,14 @@ export default function SignUp() {
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center mb-4">
               <SvgLogo />
-              <span className="text-2xl font-bold text-[#4068ec] ml-3">CollegeAdmit.AI</span>
+              <span className="text-2xl font-bold text-gray-900 dark:text-white ml-3">CollegeAdmit.AI</span>
             </div>
-            <h2 className="text-center text-3xl font-bold tracking-tight text-[#4068ec]">
+            <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
               Create your account
             </h2>
-            <p className="mt-2 text-center text-sm text-[#4068ec]/80">
+            <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
               Or{' '}
-              <Link href="/auth/signin" className="font-medium text-[#63D2FF] hover:text-[#78D5D7]">
+              <Link href="/auth/signin" className="font-medium text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300">
                 sign in to your existing account
               </Link>
             </p>
@@ -126,7 +126,7 @@ export default function SignUp() {
           <div className="mt-8 space-y-6">
             <form className="space-y-6 auth-form" onSubmit={handleSubmit}>
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="block text-sm font-medium text-gray-900 dark:text-white">
                   Full Name
                 </label>
                 <div className="mt-1">
@@ -138,13 +138,13 @@ export default function SignUp() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-[#63D2FF] focus:outline-none focus:ring-[#63D2FF] sm:text-sm bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-500 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-gray-900 sm:text-sm bg-white text-gray-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-900 dark:text-white">
                   Email address
                 </label>
                 <div className="mt-1">
@@ -156,13 +156,13 @@ export default function SignUp() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-[#63D2FF] focus:outline-none focus:ring-[#63D2FF] sm:text-sm bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-500 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-gray-900 sm:text-sm bg-white text-gray-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-900 dark:text-white">
                   Password
                 </label>
                 <div className="mt-1">
@@ -174,13 +174,13 @@ export default function SignUp() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-[#63D2FF] focus:outline-none focus:ring-[#63D2FF] sm:text-sm bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-500 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-gray-900 sm:text-sm bg-white text-gray-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-900 dark:text-white">
                   Confirm Password
                 </label>
                 <div className="mt-1">
@@ -192,7 +192,7 @@ export default function SignUp() {
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-[#63D2FF] focus:outline-none focus:ring-[#63D2FF] sm:text-sm bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700"
+                    className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-500 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-gray-900 sm:text-sm bg-white text-gray-900"
                   />
                 </div>
               </div>
@@ -201,7 +201,7 @@ export default function SignUp() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="group relative flex w-full justify-center rounded-md bg-[#4068ec] px-3 py-2 text-sm font-semibold text-white hover:bg-[#4068ec]/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4068ec] disabled:bg-[#4068ec]/70 transition-colors"
+                  className="group relative flex w-full justify-center rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 disabled:bg-gray-400 transition-colors"
                 >
                   {isLoading ? 'Creating account...' : 'Create account'}
                 </button>
@@ -210,7 +210,7 @@ export default function SignUp() {
           </div>
           
           <div className="text-center">
-            <Link href="/" className="text-sm text-[#4068ec]/80 hover:text-[#4068ec]">
+            <Link href="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
               ← Back to home
             </Link>
           </div>
