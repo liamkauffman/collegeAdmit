@@ -20,7 +20,7 @@ export const authOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
+        const user = await prisma.User.findUnique({
           where: {
             email: credentials.email,
           },
@@ -76,7 +76,7 @@ export const authOptions = {
         
         // Fetch user preferences and add them to the session
         try {
-          const user = await prisma.user.findUnique({
+          const user = await prisma.User.findUnique({
             where: { id: token.id },
             include: { preferences: true }
           });

@@ -32,6 +32,7 @@ model User {
   applications  CollegeApplication[]
   preferences   UserPreferences?
   resume        Resume?
+  favorites     UserFavorites[]
 }
 
 enum UserRole {
@@ -190,6 +191,7 @@ model College {
   notes           CollegeNote[]
   applications    CollegeApplication[]
   majors          CollegeMajor[]
+  favoritedBy     UserFavorites[]
 }
 
 model SavedCollege {
@@ -257,4 +259,17 @@ model CollegeMajor {
   major     Major    @relation(fields: [majorId], references: [id], onDelete: Cascade)
   
   @@unique([collegeId, majorId])
+}
+
+model UserFavorites {
+  id        String   @id @default(cuid())
+  userId    String
+  collegeId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  college   College  @relation(fields: [collegeId], references: [id])
+
+  @@unique([userId, collegeId])
+  @@index([userId])
+  @@index([collegeId])
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import prisma from '@/lib/prisma';
+import { authOptions } from "@/lib/auth";
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 // GET handler to fetch follow-up questions - keep for backward compatibility
 export async function GET() {
@@ -26,7 +28,7 @@ export async function GET() {
     if (session?.user?.email) {
       try {
         // Get the user from the database
-        const user = await prisma.user.findUnique({
+        const user = await prisma.User.findUnique({
           where: { email: session.user.email },
           include: { preferences: true }
         });
@@ -100,7 +102,7 @@ export async function POST(request) {
     if (session?.user?.email) {
       try {
         // Get the user from the database
-        const user = await prisma.user.findUnique({
+        const user = await prisma.User.findUnique({
           where: { email: session.user.email },
           include: { preferences: true }
         });

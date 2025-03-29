@@ -3,7 +3,7 @@ import React from 'react';
 export function LoadingAnimation() {
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className="mt-4 text-[#4068ec] text-2xl mb-4">
+      <div className="mt-4 text-[#000000] text-2xl mb-4">
         Finding colleges, just for you...
       </div>
       

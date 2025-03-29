@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import NavigationBar from '@/components/navigation-bar';
-import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock, X, Download } from 'lucide-react';
+import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock, X, Download, MapPin, ArrowRight, Search } from 'lucide-react';
 import { FileUpload } from "@/components/ui/file-upload";
 
 export default function Dashboard() {
@@ -42,6 +42,11 @@ export default function Dashboard() {
   });
 
   const [resumeUrl, setResumeUrl] = useState('');
+
+  // Add a new state for favorite colleges
+  const [favoriteColleges, setFavoriteColleges] = useState([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [favoritesError, setFavoritesError] = useState(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -95,6 +100,31 @@ export default function Dashboard() {
 
     fetchPreferences();
   }, [status]);
+
+  // Add effect to fetch favorite colleges
+  useEffect(() => {
+    const fetchFavoriteColleges = async () => {
+      if (status === 'authenticated' && activeTab === 'favorites') {
+        setLoadingFavorites(true);
+        setFavoritesError(null);
+        try {
+          const response = await fetch('/api/colleges/favorite');
+          if (!response.ok) {
+            throw new Error('Failed to fetch favorite colleges');
+          }
+          const data = await response.json();
+          setFavoriteColleges(data);
+        } catch (err) {
+          console.error('Error fetching favorite colleges:', err);
+          setFavoritesError('Failed to load your favorite colleges');
+        } finally {
+          setLoadingFavorites(false);
+        }
+      }
+    };
+
+    fetchFavoriteColleges();
+  }, [status, activeTab]);
 
   // Handler for input changes
   const handleInputChange = async (field, value) => {
@@ -330,6 +360,32 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Error removing resume:', err);
       // Optionally show an error message to the user
+    }
+  };
+
+  // Add handler to remove college from favorites
+  const handleUnfavoriteCollege = async (collegeId) => {
+    try {
+      const response = await fetch('/api/colleges/favorite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          collegeId,
+          action: 'unfavorite'
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to remove from favorites');
+      }
+      
+      // Update state to remove the college from the list
+      setFavoriteColleges(favoriteColleges.filter(item => item.collegeId !== collegeId));
+    } catch (err) {
+      console.error('Error removing college from favorites:', err);
+      // Show error message to user
     }
   };
 
@@ -673,101 +729,124 @@ export default function Dashboard() {
         
         {/* Favorite Colleges Tab */}
         {activeTab === 'favorites' && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-            <div className="flex items-center justify-between mb-6">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+            <div className="flex items-center justify-between mb-8">
               <h2 className="text-2xl font-semibold text-gray-900">Favorite Colleges</h2>
-              <button className="flex items-center text-white bg-gray-900 hover:bg-gray-800 transition-colors px-3 py-1.5 rounded-md text-sm">
-                <Plus className="h-4 w-4 mr-1" />
-                <span>Add College</span>
+              <button 
+                onClick={() => router.push('/colleges')} 
+                className="flex items-center text-white bg-[#2081C3] hover:bg-[#1a6ea8] transition-colors px-4 py-2 rounded-md text-sm font-medium"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                <span>Browse Colleges</span>
               </button>
             </div>
             
-            <div className="space-y-4">
-              {/* College Card */}
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">Stanford University</h3>
-                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
-                        <Heart className="h-5 w-5 fill-gray-900" />
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Stanford, CA • Private Research University</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 5 National</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">4% Acceptance</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Computer Science</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Added on May 20, 2023</span>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
+            {loadingFavorites ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-10 h-10 border-2 border-[#2081C3] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-gray-600">Loading your favorite colleges...</p>
               </div>
-              
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">MIT</h3>
-                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
-                        <Heart className="h-5 w-5 fill-gray-900" />
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Cambridge, MA • Private Research University</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 5 National</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">7% Acceptance</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Engineering</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Added on May 18, 2023</span>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
+            ) : favoritesError ? (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6 text-center">
+                <p className="text-red-600 mb-2">{favoritesError}</p>
+                <button 
+                  onClick={() => setActiveTab('favorites')} 
+                  className="text-[#2081C3] underline hover:text-[#1a6ea8]"
+                >
+                  Try again
+                </button>
               </div>
-              
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 p-3 rounded-md mr-4">
-                    <GraduationCap className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">UC Berkeley</h3>
-                      <button className="text-gray-900 hover:text-gray-700 transition-colors">
-                        <Heart className="h-5 w-5 fill-gray-900" />
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Berkeley, CA • Public Research University</p>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Top 20 National</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">16% Acceptance</span>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-md">Business</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Added on May 15, 2023</span>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
+            ) : favoriteColleges.length === 0 ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-10 text-center">
+                <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No favorite colleges yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Start exploring colleges and add them to your favorites to keep track of schools you're interested in.
+                </p>
+                <button 
+                  onClick={() => router.push('/colleges')} 
+                  className="inline-flex items-center text-white bg-[#2081C3] hover:bg-[#1a6ea8] px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Explore Colleges
+                </button>
               </div>
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {favoriteColleges.map((favorite) => (
+                  <div 
+                    key={favorite.id} 
+                    className="bg-white border border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-all group"
+                  >
+                    <div className="flex items-start space-x-4">
+                      <div className="w-14 h-14 flex-shrink-0 bg-[#EDF8FF] rounded-md flex items-center justify-center">
+                        <GraduationCap className="h-7 w-7 text-[#2081C3]" />
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between">
+                          <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[#2081C3] transition-colors">
+                            {favorite.college.name}
+                          </h3>
+                          <button 
+                            onClick={() => handleUnfavoriteCollege(favorite.collegeId)}
+                            className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                            aria-label="Remove from favorites"
+                            title="Remove from favorites"
+                          >
+                            <Heart className="h-5 w-5 fill-red-500" />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center text-sm text-gray-600 mt-1 mb-3">
+                          <MapPin className="h-3.5 w-3.5 mr-1" />
+                          <span>
+                            {[favorite.college.city, favorite.college.state].filter(Boolean).join(', ')}
+                          </span>
+                          {favorite.college.type && (
+                            <>
+                              <span className="mx-2 text-gray-300">•</span>
+                              <span>{favorite.college.type}</span>
+                            </>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {favorite.college.acceptanceRate && (
+                            <span className="bg-[#EDF8FF] text-[#2081C3] text-xs px-2 py-1 rounded-md font-medium">
+                              {Math.round(favorite.college.acceptanceRate)}% Acceptance
+                            </span>
+                          )}
+                          {favorite.college.tuition && (
+                            <span className="bg-[#EDF8FF] text-[#2081C3] text-xs px-2 py-1 rounded-md font-medium">
+                              ${new Intl.NumberFormat().format(favorite.college.tuition)} Tuition
+                            </span>
+                          )}
+                          {favorite.college.majors && favorite.college.majors.length > 0 && (
+                            <span className="bg-[#EDF8FF] text-[#2081C3] text-xs px-2 py-1 rounded-md font-medium">
+                              {favorite.college.majors[0].major.name}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-4">
+                          <span className="text-xs text-gray-500">
+                            Added {new Date(favorite.createdAt).toLocaleDateString()}
+                          </span>
+                          <button 
+                            onClick={() => router.push(`/colleges/${favorite.collegeId}`)}
+                            className="text-[#2081C3] hover:bg-[#EDF8FF] px-3 py-1 rounded-md text-sm font-medium transition-colors flex items-center"
+                          >
+                            View Details
+                            <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
         

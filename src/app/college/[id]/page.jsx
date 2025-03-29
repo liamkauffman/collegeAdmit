@@ -6,16 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, MessageCircle, X } from "lucide-react"
+import { Send, MessageCircle, X, Star, LightbulbIcon, Loader2, BookOpen, GraduationCap } from "lucide-react"
 import { API_URL } from "@/config"
 import NavigationBar from '@/components/navigation-bar'
 import { mockCollegeDetails } from '@/lib/mock-college-details'
 import { motion, AnimatePresence } from "framer-motion"
 import { fetchCollegeDetails } from '@/lib/api'
+import { useSession } from "next-auth/react"
 
 export default function CollegePage() {
   const params = useParams()
   const router = useRouter()
+  const { data: session } = useSession()
   const [college, setCollege] = useState(null)
   const [selectedMajor, setSelectedMajor] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -23,11 +25,12 @@ export default function CollegePage() {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(true)
   const [activeSection, setActiveSection] = useState('quick-facts')
   const messagesEndRef = useRef(null)
   const sectionsRef = useRef({})
   const [scrollY, setScrollY] = useState(0)
+  const [isStarred, setIsStarred] = useState(false)
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -173,6 +176,20 @@ export default function CollegePage() {
     getCollegeDetails();
   }, [params.id]);
 
+  // Add effect for welcome message when chat opens
+  useEffect(() => {
+    if (isChatOpen && messages.length === 0 && college) {
+      setMessages([
+        {
+          role: 'assistant',
+          content: `Welcome! I'm the ${college.name} AI assistant. You can ask me anything about admissions, campus life, majors, costs, or student outcomes.`,
+          sources: [],
+          isLoading: false
+        }
+      ]);
+    }
+  }, [isChatOpen, messages.length, college]);
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -267,30 +284,35 @@ export default function CollegePage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/chat`, {
+      // Add initial empty assistant message with loading state
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: '', 
+        isLoading: true,
+        sources: []
+      }])
+
+      // Use the streaming vector search endpoint
+      const response = await fetch(`${API_URL}/api/colleges/vector_chat_stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           message: userMessage,
-          college_name: college?.name
+          num_results: 5
         })
       })
 
       if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('College information not found')
-        }
         throw new Error('Failed to get response')
       }
 
-      // Add initial empty assistant message
-      setMessages(prev => [...prev, { role: 'assistant', content: '' }])
-
+      // Handle streaming response
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let accumulatedContent = ''
+      let sources = []
 
       while (true) {
         const { done, value } = await reader.read()
@@ -298,26 +320,114 @@ export default function CollegePage() {
 
         const chunk = decoder.decode(value)
         accumulatedContent += chunk
-        // Update with raw chunk for streaming effect
+        
+        // Check for sources in the response
+        if (chunk.includes('Sources:')) {
+          const sourcesText = chunk.split('Sources:')[1]?.trim()
+          if (sourcesText) {
+            sources = sourcesText.split(',').map(s => s.trim())
+          }
+        }
+        
+        // Update message with streaming content
         setMessages(prev => {
           const newMessages = [...prev]
           const lastMessage = newMessages[newMessages.length - 1]
-          lastMessage.content = accumulatedContent
+          lastMessage.content = accumulatedContent.replace('Sources:', '').trim()
+          lastMessage.sources = sources
+          lastMessage.isLoading = false
           return newMessages
         })
       }
     } catch (err) {
       console.error('Error:', err)
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: err.message === 'College information not found' 
-          ? "I'm sorry, but I couldn't find information about this college."
-          : "I apologize, but I encountered an error processing your request. Please try again."
-      }])
+      setMessages(prev => {
+        const messages = [...prev]
+        const lastMessage = messages[messages.length - 1]
+        
+        if (lastMessage.role === 'assistant' && lastMessage.isLoading) {
+          // Update the loading message with error
+          lastMessage.content = "I apologize, but I encountered an error processing your request. Please try again."
+          lastMessage.isLoading = false
+        } else {
+          // Add a new error message
+          messages.push({
+            role: 'assistant',
+            content: "I apologize, but I encountered an error processing your request. Please try again.",
+            isLoading: false,
+            sources: []
+          })
+        }
+        
+        return messages
+      })
     } finally {
       setIsSending(false)
     }
   }
+
+  // Add useEffect to fetch favorite status
+  useEffect(() => {
+    const fetchFavoriteStatus = async () => {
+      if (!session || !college) return;
+      
+      try {
+        const response = await fetch('/api/colleges');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        setIsStarred(data.favorites.includes(college.id));
+      } catch (error) {
+        console.error('Error fetching favorite status:', error);
+      }
+    };
+
+    fetchFavoriteStatus();
+  }, [session, college]);
+
+  const handleStarClick = async () => {
+    if (!session) {
+      router.push('/auth/signin');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/colleges/favorite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          collegeId: college.id,
+          action: isStarred ? 'unfavorite' : 'favorite'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update favorite status');
+      }
+
+      setIsStarred(!isStarred);
+    } catch (error) {
+      console.error('Error updating favorite status:', error);
+    }
+  };
+
+  // Add useEffect to handle sidebar resize
+  useEffect(() => {
+    const handleResize = () => {
+      // Close sidebar automatically on mobile
+      if (window.innerWidth < 768 && isChatOpen) {
+        setIsChatOpen(false)
+      }
+    }
+    
+    window.addEventListener('resize', handleResize)
+    // Set initial state based on screen size
+    handleResize()
+    
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isChatOpen])
 
   if (loading) {
     return (
@@ -423,14 +533,32 @@ export default function CollegePage() {
           initial={{ y: 0 }}
         />
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-20">
-          <motion.h1 
-            className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-md"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            {college.name}
-          </motion.h1>
+          <div className="flex items-center justify-between">
+            <motion.h1 
+              className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-md"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              {college.name}
+            </motion.h1>
+            <motion.button
+              onClick={handleStarClick}
+              className="p-3 rounded-full bg-white/90 hover:bg-white transition-colors shadow-md"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Star
+                className={`w-6 h-6 ${
+                  isStarred 
+                    ? 'fill-yellow-400 text-yellow-400' 
+                    : 'text-gray-400 hover:text-yellow-400'
+                } transition-colors`}
+              />
+            </motion.button>
+          </div>
           <motion.div 
             className="flex items-center mt-2 text-white/90"
             initial={{ y: 20, opacity: 0 }}
@@ -472,381 +600,948 @@ export default function CollegePage() {
       
       {/* Main Content */}
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-        <div ref={el => sectionsRef.current['quick-facts'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quick Facts</h2>
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Type</h3>
-                <p className="font-semibold text-gray-800">{college.type || "N/A"}</p>
-              </div>
-              
-              <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">US News Ranking</h3>
-                <p className="font-semibold text-gray-800">#{college.ranking?.usNews || "N/A"}</p>
-              </div>
-              
-              <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-gray-500 mb-1">Size</h3>
-                <div>
-                  <p className="font-semibold text-gray-800">{college.size?.category || "N/A"}</p>
-                  <p className="text-sm text-gray-500">
-                    {typeof college.size?.students === 'number' 
-                      ? college.size.students.toLocaleString() + " students"
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div ref={el => sectionsRef.current['majors'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Majors</h2>
-            
-            <div className="mb-4">
-              <label htmlFor="major-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Select a Major
-              </label>
-              <select 
-                id="major-select"
-                className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF]"
-                value={selectedMajor || ""}
-                onChange={(e) => setSelectedMajor(e.target.value || null)}
-              >
-                <option value="">All Majors</option>
-                {college.majors.map((major, index) => (
-                  <option key={index} value={major}>{major}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {college.majors.slice(0, 10).map((major, index) => (
-                <span 
-                  key={index} 
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${selectedMajor === major ? 'bg-[#4068ec] text-white' : 'bg-[#F7F9F9] text-gray-700 hover:bg-[#BED8D4]/50'}`}
-                  onClick={() => setSelectedMajor(major === selectedMajor ? null : major)}
-                >
-                  {major}
-                </span>
-              ))}
-              {college.majors.length > 10 && (
-                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#F7F9F9] text-gray-700">
-                  +{college.majors.length - 10} more
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div ref={el => sectionsRef.current['acceptance'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Acceptance</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">General Acceptance</h3>
-                <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">Acceptance Rate</span>
-                    <span className="font-bold text-gray-800">{college.acceptance.rate}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">International Students</span>
-                    <span className="font-bold text-gray-800">{college.acceptance.internationalStudents}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-500">Your Chances</span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      college.acceptance.yourChances === 'Extreme Reach' ? 'bg-red-500 text-white' :
-                      college.acceptance.yourChances === 'Reach' ? 'bg-orange-500 text-white' :
-                      college.acceptance.yourChances === 'Target' ? 'bg-green-500 text-white' :
-                      'bg-blue-500 text-white'
-                    }`}>
-                      {college.acceptance.yourChances}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Academic Requirements</h3>
-                <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
-                      <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
-                    </div>
+        <div className="flex flex-col md:flex-row">
+          {/* Main content area */}
+          <div className={`flex-1 transition-all duration-300 ${isChatOpen ? 'md:pr-4 md:w-[calc(100%-384px)]' : ''}`}>
+            <div ref={el => sectionsRef.current['quick-facts'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quick Facts</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Type</h3>
+                    <p className="font-semibold text-gray-800">{college.type || "N/A"}</p>
                   </div>
                   
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-500">SAT Range (25-75%)</span>
-                      <span className="font-bold text-gray-800">{college.academics.satRange.min} - {college.academics.satRange.max}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '70%' }}></div>
-                    </div>
+                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">US News Ranking</h3>
+                    <p className="font-semibold text-gray-800">#{college.ranking?.usNews || "N/A"}</p>
                   </div>
                   
-                  {college.academics.actRange && (
+                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-500 mb-1">Size</h3>
                     <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">ACT Range (25-75%)</span>
-                        <span className="font-bold text-gray-800">{college.academics.actRange.min} - {college.academics.actRange.max}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '65%' }}></div>
-                      </div>
+                      <p className="font-semibold text-gray-800">{college.size?.category || "N/A"}</p>
+                      <p className="text-sm text-gray-500">
+                        {typeof college.size?.students === 'number' 
+                          ? college.size.students.toLocaleString() + " students"
+                          : "N/A"}
+                      </p>
                     </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div ref={el => sectionsRef.current['majors'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Majors</h2>
+                
+                <div className="mb-4">
+                  <label htmlFor="major-select" className="block text-sm font-medium text-gray-700 mb-1">
+                    Select a Major
+                  </label>
+                  <select 
+                    id="major-select"
+                    className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF]"
+                    value={selectedMajor || ""}
+                    onChange={(e) => setSelectedMajor(e.target.value || null)}
+                  >
+                    <option value="">All Majors</option>
+                    {college.majors.map((major, index) => (
+                      <option key={index} value={major}>{major}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {college.majors.slice(0, 10).map((major, index) => (
+                    <span 
+                      key={index} 
+                      className={`inline-block px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${selectedMajor === major ? 'bg-[#4068ec] text-white' : 'bg-[#F7F9F9] text-gray-700 hover:bg-[#BED8D4]/50'}`}
+                      onClick={() => setSelectedMajor(major === selectedMajor ? null : major)}
+                    >
+                      {major}
+                    </span>
+                  ))}
+                  {college.majors.length > 10 && (
+                    <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#F7F9F9] text-gray-700">
+                      +{college.majors.length - 10} more
+                    </span>
                   )}
                 </div>
               </div>
-              
-              {college.acceptance.byMajor && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Acceptance by Major</h3>
-                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                    {Object.entries(college.acceptance.byMajor).map(([major, rate], index) => (
-                      <div key={index} className="flex justify-between items-center mb-2 last:mb-0">
-                        <span className="text-sm font-medium text-gray-500">{major}</span>
-                        <span className="font-bold text-gray-800">{rate}</span>
+            </div>
+            
+            <div ref={el => sectionsRef.current['acceptance'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Acceptance</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">General Acceptance</h3>
+                    <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-500">Acceptance Rate</span>
+                        <span className="font-bold text-gray-800">{college.acceptance.rate}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div ref={el => sectionsRef.current['quality-of-life'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quality of Life</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {college.qualityOfLife?.factors?.map((factor, index) => (
-                <div key={index} className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-gray-500 mb-1">{factor.name}</h3>
-                  <div className="flex items-center">
-                    <span className="font-bold text-gray-800 mr-2">{factor.score || "N/A"}/10</span>
-                    <div className="w-full bg-gray-200 rounded-full h-2 flex-1">
-                      <div 
-                        className="bg-[#4068ec] h-2 rounded-full" 
-                        style={{ width: `${((factor.score || 0) / 10) * 100}%` }}
-                      ></div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-500">International Students</span>
+                        <span className="font-bold text-gray-800">{college.acceptance.internationalStudents}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-500">Your Chances</span>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          college.acceptance.yourChances === 'Extreme Reach' ? 'bg-red-500 text-white' :
+                          college.acceptance.yourChances === 'Reach' ? 'bg-orange-500 text-white' :
+                          college.acceptance.yourChances === 'Target' ? 'bg-green-500 text-white' :
+                          'bg-blue-500 text-white'
+                        }`}>
+                          {college.acceptance.yourChances}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-4 text-sm text-gray-500">
-              <p>{college.qualityOfLife?.description || "No description available."}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div ref={el => sectionsRef.current['costs'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Costs</h2>
-            
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Tuition & Fees</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-[#F7F9F9]">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Item
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        In-State
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Out-of-State
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {college.costs.items.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.inState}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.outOfState}
-                        </td>
-                      </tr>
-                    ))}
-                    <tr className="bg-[#F7F9F9]">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        Total
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        {college.costs.total.inState}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        {college.costs.total.outOfState}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <div className="text-sm text-gray-500">
-              <p>{college.costs.notes}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div ref={el => sectionsRef.current['recruiting'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
-          <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Recruiting & Outcomes</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Employment</h3>
-                <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">Employment Rate</span>
-                    <span className="font-bold text-gray-800">{college.recruiting?.employmentRate || "N/A"}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">Average Starting Salary</span>
-                    <span className="font-bold text-gray-800">{college.recruiting?.startingSalary || "N/A"}</span>
-                  </div>
-                  {college.recruiting?.salaryAfterYears && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-500">
-                        Salary after {college.recruiting.salaryAfterYears.years || "5"} years
-                      </span>
-                      <span className="font-bold text-gray-800">
-                        {college.recruiting.salaryAfterYears.amount || "N/A"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              {Array.isArray(college.recruiting?.topIndustries) && college.recruiting.topIndustries.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Top Industries</h3>
-                  <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                    {college.recruiting.topIndustries.map((industry, index) => (
-                      <div key={index} className="mb-3 last:mb-0">
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Academic Requirements</h3>
+                    <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                      <div className="mb-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm font-medium text-gray-500">{industry.name}</span>
-                          <span className="font-bold text-gray-800">{industry.percentage}</span>
+                          <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
+                          <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
+                        </div>
+                      </div>
+                      
+                      <div className="mb-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm font-medium text-gray-500">SAT Range (25-75%)</span>
+                          <span className="font-bold text-gray-800">{college.academics.satRange.min} - {college.academics.satRange.max}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '70%' }}></div>
+                        </div>
+                      </div>
+                      
+                      {college.academics.actRange && (
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-sm font-medium text-gray-500">ACT Range (25-75%)</span>
+                            <span className="font-bold text-gray-800">{college.academics.actRange.min} - {college.academics.actRange.max}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '65%' }}></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {college.acceptance.byMajor && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-3">Acceptance by Major</h3>
+                      <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                        {Object.entries(college.acceptance.byMajor).map(([major, rate], index) => (
+                          <div key={index} className="flex justify-between items-center mb-2 last:mb-0">
+                            <span className="text-sm font-medium text-gray-500">{major}</span>
+                            <span className="font-bold text-gray-800">{rate}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div ref={el => sectionsRef.current['quality-of-life'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Quality of Life</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {college.qualityOfLife?.factors?.map((factor, index) => (
+                    <div key={index} className="bg-[#F7F9F9] p-4 rounded-lg">
+                      <h3 className="text-sm font-medium text-gray-500 mb-1">{factor.name}</h3>
+                      <div className="flex items-center">
+                        <span className="font-bold text-gray-800 mr-2">{factor.score || "N/A"}/10</span>
+                        <div className="w-full bg-gray-200 rounded-full h-2 flex-1">
                           <div 
                             className="bg-[#4068ec] h-2 rounded-full" 
-                            style={{ 
-                              width: typeof industry.percentage === 'string' 
-                                ? industry.percentage
-                                : '0%'
-                            }}
+                            style={{ width: `${((factor.score || 0) / 10) * 100}%` }}
                           ></div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
-            
-            {college.recruiting?.graduateSchool && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Graduate School</h3>
-                <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-500">Graduate School Attendance</span>
-                    <span className="font-bold text-gray-800">{college.recruiting.graduateSchool.rate || "N/A"}</span>
-                  </div>
+                
+                <div className="mt-4 text-sm text-gray-500">
+                  <p>{college.qualityOfLife?.description || "No description available."}</p>
                 </div>
               </div>
-            )}
+            </div>
+            
+            <div ref={el => sectionsRef.current['costs'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Costs</h2>
+                
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Tuition & Fees</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-[#F7F9F9]">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Item
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            In-State
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Out-of-State
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {college.costs.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.inState}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {item.outOfState}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr className="bg-[#F7F9F9]">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            Total
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            {college.costs.total.inState}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            {college.costs.total.outOfState}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                
+                <div className="text-sm text-gray-500">
+                  <p>{college.costs.notes}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div ref={el => sectionsRef.current['recruiting'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+              <div className="p-6">
+                <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Recruiting & Outcomes</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Employment</h3>
+                    <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-500">Employment Rate</span>
+                        <span className="font-bold text-gray-800">{college.recruiting?.employmentRate || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-gray-500">Average Starting Salary</span>
+                        <span className="font-bold text-gray-800">{college.recruiting?.startingSalary || "N/A"}</span>
+                      </div>
+                      {college.recruiting?.salaryAfterYears && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium text-gray-500">
+                            Salary after {college.recruiting.salaryAfterYears.years || "5"} years
+                          </span>
+                          <span className="font-bold text-gray-800">
+                            {college.recruiting.salaryAfterYears.amount || "N/A"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {Array.isArray(college.recruiting?.topIndustries) && college.recruiting.topIndustries.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800 mb-3">Top Industries</h3>
+                      <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                        {college.recruiting.topIndustries.map((industry, index) => (
+                          <div key={index} className="mb-3 last:mb-0">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-sm font-medium text-gray-500">{industry.name}</span>
+                              <span className="font-bold text-gray-800">{industry.percentage}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-[#4068ec] h-2 rounded-full" 
+                                style={{ 
+                                  width: typeof industry.percentage === 'string' 
+                                    ? industry.percentage
+                                    : '0%'
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {college.recruiting?.graduateSchool && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Graduate School</h3>
+                    <div className="bg-[#F7F9F9] p-4 rounded-lg">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-500">Graduate School Attendance</span>
+                        <span className="font-bold text-gray-800">{college.recruiting.graduateSchool.rate || "N/A"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
-      </main>
-
-      {/* Chat Interface */}
-      <AnimatePresence>
-        {isChatOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-20 right-4 w-96 h-[500px] bg-white rounded-xl shadow-lg overflow-hidden z-40"
-          >
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-semibold text-[#4068ec]">Ask about {college.name}</h3>
-              <button
-                onClick={() => setIsChatOpen(false)}
-                className="p-1 hover:bg-gray-100 rounded-full"
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            
-            <ScrollArea className="h-[400px] p-4">
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`mb-4 ${msg.role === 'user' ? 'text-right' : ''}`}
+          
+          {/* Chat Sidebar */}
+          <div className="hidden md:block">
+            <AnimatePresence>
+              {isChatOpen && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: 384 }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="bg-white rounded-l-xl shadow-xl h-[calc(100vh-180px)] sticky top-[100px] overflow-hidden border-l border-t border-b border-gray-200"
                 >
-                  <div
-                    className={`inline-block px-4 py-2 rounded-lg ${
-                      msg.role === 'user'
-                        ? 'bg-[#4068ec] text-white'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    {msg.content}
+                  <div className="flex items-center justify-between p-4 border-b bg-white text-gray-900">
+                    <motion.h3 
+                      className="font-semibold flex items-center"
+                      initial={{ y: -10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.3 }}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2 text-gray-500" />
+                      </motion.div>
+                      Chat with {college.name}
+                    </motion.h3>
+                    <motion.button
+                      onClick={() => setIsChatOpen(false)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      whileHover={{ rotate: 90 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 10 }}
+                    >
+                      <X className="w-5 h-5 text-gray-500" />
+                    </motion.button>
                   </div>
+                  
+                  <div className="flex flex-col h-[calc(100%-64px)]">
+                    <ScrollArea className="flex-1 px-4 py-2">
+                      {messages.length === 0 ? (
+                        <motion.div 
+                          className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4, duration: 0.6 }}
+                        >
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ 
+                              type: "spring", 
+                              stiffness: 260, 
+                              damping: 20, 
+                              delay: 0.5 
+                            }}
+                          >
+                            <MessageCircle className="w-12 h-12 mb-4 text-gray-300" />
+                          </motion.div>
+                          <motion.p 
+                            className="text-sm mb-2"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.7 }}
+                          >
+                            Ask anything about {college.name}!
+                          </motion.p>
+                          <motion.p 
+                            className="text-xs"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.8 }}
+                          >
+                            Try asking about admissions, campus life, majors, costs, or student outcomes.
+                          </motion.p>
+                        </motion.div>
+                      ) : (
+                        <div className="pt-2">
+                          {messages.map((msg, index) => (
+                            <motion.div
+                              key={index}
+                              className={`mb-4 ${msg.role === 'user' ? 'text-right' : ''}`}
+                              initial={{ 
+                                opacity: 0, 
+                                x: msg.role === 'user' ? 20 : -20,
+                                scale: 0.95 
+                              }}
+                              animate={{ 
+                                opacity: 1, 
+                                x: 0,
+                                scale: 1 
+                              }}
+                              transition={{ 
+                                type: "spring", 
+                                damping: 25, 
+                                stiffness: 300,
+                                delay: Math.min(0.1 * index, 0.5) 
+                              }}
+                            >
+                              <div
+                                className={`inline-block px-4 py-3 rounded-xl shadow-sm ${
+                                  msg.role === 'user'
+                                    ? 'bg-gray-900 text-white rounded-tr-none'
+                                    : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-200'
+                                } max-w-[85%]`}
+                              >
+                                {msg.isLoading ? (
+                                  <div className="flex items-center space-x-2">
+                                    <motion.div 
+                                      className="w-2 h-2 rounded-full bg-gray-300"
+                                      animate={{ 
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.5, 1, 0.5]
+                                      }}
+                                      transition={{
+                                        duration: 1.5,
+                                        repeat: Infinity,
+                                        ease: "easeInOut"
+                                      }}
+                                    />
+                                    <motion.div 
+                                      className="w-2 h-2 rounded-full bg-gray-300"
+                                      animate={{ 
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.5, 1, 0.5]
+                                      }}
+                                      transition={{
+                                        duration: 1.5,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: 0.2
+                                      }}
+                                    />
+                                    <motion.div 
+                                      className="w-2 h-2 rounded-full bg-gray-300"
+                                      animate={{ 
+                                        scale: [1, 1.2, 1],
+                                        opacity: [0.5, 1, 0.5]
+                                      }}
+                                      transition={{
+                                        duration: 1.5,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: 0.4
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                    
+                                    {/* Source attribution */}
+                                    {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                                      <motion.div 
+                                        className="mt-2 pt-2 border-t border-gray-200"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        transition={{ delay: 0.3 }}
+                                      >
+                                        <p className="text-xs text-gray-500 font-medium">Sources:</p>
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {msg.sources.map((source, i) => (
+                                            <motion.span 
+                                              key={i} 
+                                              className="inline-block px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-600"
+                                              initial={{ opacity: 0, scale: 0.8 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              transition={{ delay: 0.3 + (i * 0.1) }}
+                                              whileHover={{ 
+                                                scale: 1.05,
+                                                backgroundColor: "#f3f4f6"
+                                              }}
+                                            >
+                                              {source}
+                                            </motion.span>
+                                          ))}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      )}
+                    </ScrollArea>
+                    
+                    <motion.form 
+                      onSubmit={handleSendMessage} 
+                      className="p-4 border-t bg-white"
+                      initial={{ y: 20, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.2, duration: 0.4 }}
+                    >
+                      {messages.length === 1 && messages[0].role === 'assistant' && !messages[0].isLoading && (
+                        <motion.div 
+                          className="mb-3"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5, duration: 0.3 }}
+                        >
+                          <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              "What are the admission requirements?",
+                              `What majors is ${college.name} known for?`,
+                              "What is campus life like?",
+                              "What is the cost of attendance?",
+                              "What is the acceptance rate?"
+                            ].map((question, i) => (
+                              <motion.button
+                                key={i}
+                                type="button"
+                                className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-1 px-2 rounded-md border border-gray-200 transition-colors"
+                                onClick={() => {
+                                  setNewMessage(question);
+                                  // Use setTimeout to allow state update before submitting
+                                  setTimeout(() => {
+                                    // Create and dispatch a submit event on the form
+                                    const form = document.querySelector('form');
+                                    if (form) {
+                                      const submitEvent = new Event('submit', { cancelable: true, bubbles: true });
+                                      form.dispatchEvent(submitEvent);
+                                    }
+                                  }, 10);
+                                }}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.6 + (i * 0.1) }}
+                                whileHover={{ 
+                                  scale: 1.05,
+                                  backgroundColor: "#f3f4f6"
+                                }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                {question}
+                              </motion.button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                      <div className="flex gap-2">
+                        <motion.input 
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                          placeholder="Ask anything about the college..."
+                          className="w-full py-3 px-4 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm"
+                          disabled={isSending}
+                          whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        />
+                        <motion.button 
+                          type="submit" 
+                          disabled={isSending || !newMessage.trim()}
+                          className="bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-xl shadow-sm flex items-center justify-center"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          animate={isSending ? { rotate: 360 } : {}}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 500, 
+                            damping: 15
+                          }}
+                        >
+                          {isSending ? (
+                            <motion.div 
+                              className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                              animate={{ rotate: 360 }}
+                              transition={{ 
+                                duration: 1,
+                                repeat: Infinity,
+                                ease: "linear"
+                              }}
+                            />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </motion.button>
+                      </div>
+                    </motion.form>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          
+          {/* Mobile Chat UI */}
+          <AnimatePresence>
+            {isChatOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: "100%" }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: "100%" }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="fixed inset-0 z-50 md:hidden bg-white"
+              >
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center justify-between p-4 border-b bg-white text-gray-900">
+                    <motion.h3 
+                      className="font-semibold flex items-center"
+                      initial={{ y: -10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.3 }}
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2 text-gray-500" />
+                      </motion.div>
+                      Chat with {college.name}
+                    </motion.h3>
+                    <motion.button
+                      onClick={() => setIsChatOpen(false)}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      whileHover={{ rotate: 90 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 10 }}
+                    >
+                      <X className="w-5 h-5 text-gray-500" />
+                    </motion.button>
+                  </div>
+                  
+                  <ScrollArea className="flex-1 px-4 py-2">
+                    {messages.length === 0 ? (
+                      <motion.div 
+                        className="h-full flex flex-col items-center justify-center text-center p-6 text-gray-400"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 0.6 }}
+                      >
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 260, 
+                            damping: 20, 
+                            delay: 0.5 
+                          }}
+                        >
+                          <MessageCircle className="w-12 h-12 mb-4 text-gray-300" />
+                        </motion.div>
+                        <motion.p 
+                          className="text-sm mb-2"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.7 }}
+                        >
+                          Ask anything about {college.name}!
+                        </motion.p>
+                        <motion.p 
+                          className="text-xs"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 }}
+                        >
+                          Try asking about admissions, campus life, majors, costs, or student outcomes.
+                        </motion.p>
+                      </motion.div>
+                    ) : (
+                      <div className="pt-2">
+                        {messages.map((msg, index) => (
+                          <motion.div
+                            key={index}
+                            className={`mb-4 ${msg.role === 'user' ? 'text-right' : ''}`}
+                            initial={{ 
+                              opacity: 0, 
+                              x: msg.role === 'user' ? 20 : -20,
+                              scale: 0.95 
+                            }}
+                            animate={{ 
+                              opacity: 1, 
+                              x: 0,
+                              scale: 1 
+                            }}
+                            transition={{ 
+                              type: "spring", 
+                              damping: 25, 
+                              stiffness: 300,
+                              delay: Math.min(0.1 * index, 0.5) 
+                            }}
+                          >
+                            <div
+                              className={`inline-block px-4 py-3 rounded-xl shadow-sm ${
+                                msg.role === 'user'
+                                  ? 'bg-gray-900 text-white rounded-tr-none'
+                                  : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-200'
+                              } max-w-[85%]`}
+                            >
+                              {msg.isLoading ? (
+                                <div className="flex items-center space-x-2">
+                                  <motion.div 
+                                    className="w-2 h-2 rounded-full bg-gray-300"
+                                    animate={{ 
+                                      scale: [1, 1.2, 1],
+                                      opacity: [0.5, 1, 0.5]
+                                    }}
+                                    transition={{
+                                      duration: 1.5,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
+                                  />
+                                  <motion.div 
+                                    className="w-2 h-2 rounded-full bg-gray-300"
+                                    animate={{ 
+                                      scale: [1, 1.2, 1],
+                                      opacity: [0.5, 1, 0.5]
+                                    }}
+                                    transition={{
+                                      duration: 1.5,
+                                      repeat: Infinity,
+                                      ease: "easeInOut",
+                                      delay: 0.2
+                                    }}
+                                  />
+                                  <motion.div 
+                                    className="w-2 h-2 rounded-full bg-gray-300"
+                                    animate={{ 
+                                      scale: [1, 1.2, 1],
+                                      opacity: [0.5, 1, 0.5]
+                                    }}
+                                    transition={{
+                                      duration: 1.5,
+                                      repeat: Infinity,
+                                      ease: "easeInOut",
+                                      delay: 0.4
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div>
+                                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                  
+                                  {/* Source attribution */}
+                                  {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                                    <motion.div 
+                                      className="mt-2 pt-2 border-t border-gray-200"
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      transition={{ delay: 0.3 }}
+                                    >
+                                      <p className="text-xs text-gray-500 font-medium">Sources:</p>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {msg.sources.map((source, i) => (
+                                          <motion.span 
+                                            key={i} 
+                                            className="inline-block px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-600"
+                                            initial={{ opacity: 0, scale: 0.8 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: 0.3 + (i * 0.1) }}
+                                            whileHover={{ 
+                                              scale: 1.05,
+                                              backgroundColor: "#f3f4f6"
+                                            }}
+                                          >
+                                            {source}
+                                          </motion.span>
+                                        ))}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    )}
+                  </ScrollArea>
+                  
+                  <motion.form 
+                    onSubmit={handleSendMessage} 
+                    className="p-4 border-t bg-white"
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2, duration: 0.4 }}
+                  >
+                    {messages.length === 1 && messages[0].role === 'assistant' && !messages[0].isLoading && (
+                      <motion.div 
+                        className="mb-3"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5, duration: 0.3 }}
+                      >
+                        <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "What are the admission requirements?",
+                            `What majors is ${college.name} known for?`,
+                            "What is campus life like?",
+                            "What is the cost of attendance?",
+                            "What is the acceptance rate?"
+                          ].map((question, i) => (
+                            <motion.button
+                              key={i}
+                              type="button"
+                              className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-1 px-2 rounded-md border border-gray-200 transition-colors"
+                              onClick={() => {
+                                setNewMessage(question);
+                                // Use setTimeout to allow state update before submitting
+                                setTimeout(() => {
+                                  // Create and dispatch a submit event on the form
+                                  const form = document.querySelector('form');
+                                  if (form) {
+                                    const submitEvent = new Event('submit', { cancelable: true, bubbles: true });
+                                    form.dispatchEvent(submitEvent);
+                                  }
+                                }, 10);
+                              }}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.6 + (i * 0.1) }}
+                              whileHover={{ 
+                                scale: 1.05,
+                                backgroundColor: "#f3f4f6"
+                              }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {question}
+                            </motion.button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                    <div className="flex gap-2">
+                      <motion.input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Ask anything about the college..."
+                        className="w-full py-3 px-4 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm"
+                        disabled={isSending}
+                        whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                      />
+                      <motion.button 
+                        type="submit" 
+                        disabled={isSending || !newMessage.trim()}
+                        className="bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-xl shadow-sm flex items-center justify-center"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        animate={isSending ? { rotate: 360 } : {}}
+                        transition={{ 
+                          type: "spring", 
+                          stiffness: 500, 
+                          damping: 15
+                        }}
+                      >
+                        {isSending ? (
+                          <motion.div 
+                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                            animate={{ rotate: 360 }}
+                            transition={{ 
+                              duration: 1,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                          />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                      </motion.button>
+                    </div>
+                  </motion.form>
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </ScrollArea>
-            
-            <form onSubmit={handleSendMessage} className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Ask anything about the college..."
-                  className="flex-1"
-                  disabled={isSending}
-                />
-                <Button type="submit" disabled={isSending}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Chat Toggle Button */}
-      <motion.button
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className="fixed bottom-4 right-4 w-12 h-12 bg-[#4068ec] text-white rounded-full shadow-lg flex items-center justify-center hover:bg-[#4068ec]/90 transition-colors z-40"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-      >
-        <MessageCircle className="w-6 h-6" />
-      </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        
+        {/* Chat Toggle Button */}
+        <AnimatePresence>
+          {!isChatOpen && (
+            <motion.button
+              onClick={() => setIsChatOpen(true)}
+              className="fixed md:hidden bottom-4 right-4 w-14 h-14 bg-gray-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all z-40"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 400,
+                damping: 17
+              }}
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1, type: "spring", stiffness: 500 }}
+              >
+                <MessageCircle className="w-6 h-6" />
+              </motion.div>
+            </motion.button>
+          )}
+        </AnimatePresence>
+        
+        {/* Toggle Button for Desktop */}
+        <AnimatePresence>
+          {!isChatOpen && (
+            <motion.button
+              onClick={() => setIsChatOpen(true)}
+              className="hidden md:flex fixed right-0 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white py-4 px-3 rounded-l-lg shadow-lg items-center justify-center hover:bg-gray-800 transition-all z-40"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              whileHover={{ x: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              transition={{ 
+                type: "spring",
+                stiffness: 400,
+                damping: 22
+              }}
+            >
+              <motion.div 
+                className="flex items-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <MessageCircle className="w-5 h-5 mr-2" />
+                <span className="font-medium text-sm">Chat</span>
+              </motion.div>
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   )
 } 

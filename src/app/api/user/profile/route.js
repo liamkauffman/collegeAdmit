@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { PrismaClient } from '@prisma/client';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 const prisma = new PrismaClient();
 
@@ -32,7 +32,7 @@ export async function PUT(request) {
     }
 
     // Update the user in the database
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.User.update({
       where: { id: userId },
       data: { name },
       select: {
@@ -84,7 +84,7 @@ export async function PATCH(request) {
     }
 
     // Look up the user by email (since NextAuth session may have email but not ID)
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: session.user.email },
       select: { id: true }
     });
@@ -139,7 +139,7 @@ export async function GET(request) {
     const userId = session.user.id;
 
     // Get the user from the database
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { id: userId },
       select: {
         id: true,

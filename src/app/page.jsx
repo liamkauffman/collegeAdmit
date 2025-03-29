@@ -10,6 +10,7 @@ import { API_URL } from "@/config";
 import { AuthModal } from "@/components/auth-modal";
 import { Button } from "@/components/ui/button";
 import { Search, ClipboardEdit, Bot, Sparkles, Laptop, ClipboardCheck, Compass, GraduationCap } from "lucide-react";
+import { ConversationThread } from "@/components/conversation-thread";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -25,6 +26,10 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [savedQuery, setSavedQuery] = useState("");
+  const [conversationHistory, setConversationHistory] = useState([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [shouldScrollToSearch, setShouldScrollToSearch] = useState(false);
   
   // Function to fetch follow-up questions
   const fetchFollowUpQuestions = async () => {
@@ -173,19 +178,19 @@ export default function Home() {
 
   // Categorize recommendations
   const getBestFit = () => recommendations?.find(college => 
-    college.category === "best_fit" || college.category_type === "best_fit"
+    college.category === "best_fit" 
   );
   
   const getReachSchools = () => recommendations?.filter(college => 
-    college.category === "reach" || college.category_type === "reach"
+    college.category === "reach"
   );
   
   const getTargetSchools = () => recommendations?.filter(college => 
-    college.category === "target" || college.category_type === "target"
+    college.category === "target"
   );
   
   const getSafetySchools = () => recommendations?.filter(college => 
-    college.category === "safety" || college.category_type === "safety"
+    college.category === "safety"
   );
 
   const handleKeyPress = (e) => {
@@ -197,6 +202,66 @@ export default function Home() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Function to handle conversation messages
+  const handleConversationMessage = async (message) => {
+    // Add user message to conversation
+    const newMessage = { type: 'user', content: message };
+    setConversationHistory(prev => [...prev, newMessage]);
+    setIsAiTyping(true);
+    setShouldScrollToSearch(false); // Reset scroll trigger
+
+    try {
+      // Prepare the payload with conversation context
+      const payload = {
+        initial_query: message,
+        follow_up_answers: [],
+        user_profile: session?.user?.preferences || {},
+        conversation_history: conversationHistory
+      };
+      
+      const response = await fetch('/api/colleges/recommendations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch college recommendations');
+      }
+      
+      const data = await response.json();
+      
+      // Add AI response to conversation
+      setConversationHistory(prev => [...prev, {
+        type: 'assistant',
+        content: data.search_summary
+      }]);
+
+      // Add new results to search history
+      setSearchHistory(prev => [...prev, {
+        query: message,
+        results: data.recommendations,
+        summary: data.search_summary
+      }]);
+
+      // Update current recommendations
+      setRecommendations(data.recommendations);
+      setSearchSummary(data.search_summary);
+      
+      // Trigger scroll after results are updated
+      setShouldScrollToSearch(true);
+      
+    } catch (err) {
+      setError(err.message);
+      console.error('Error in conversation:', err);
+    } finally {
+      setIsAiTyping(false);
+    }
   };
 
   return (
@@ -237,22 +302,45 @@ export default function Home() {
             {/* Initial Search State */}
             {!isLoading && !error && currentStep === "initial" && (
               <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20">
-                <div className="w-full max-w-2xl px-4 sm:px-6 py-8 flex flex-col items-center justify-center">
-                  <h1 className="text-center text-4xl sm:text-5xl md:text-6xl font-extrabold text-black dark:text-white mb-8 pb-2 leading-tight">
-                    Find Your Perfect College Match
+                <div className="w-full max-w-2xl px-4 sm:px-6 py-8 flex flex-col items-center justify-center relative">
+                  {/* Animated background elements */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute -top-40 -left-40 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+                    <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+                    <div className="absolute top-40 right-40 w-80 h-80 bg-white rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+                  </div>
+
+                  {/* Floating icons */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-20 left-10 animate-float">
+                      <GraduationCap className="w-8 h-8 text-gray-400 opacity-50" />
+                    </div>
+                    <div className="absolute top-40 right-20 animate-float animation-delay-1000">
+                      <Compass className="w-8 h-8 text-gray-400 opacity-50" />
+                    </div>
+                    <div className="absolute bottom-20 left-20 animate-float animation-delay-2000">
+                      <Laptop className="w-8 h-8 text-gray-400 opacity-50" />
+                    </div>
+                    <div className="absolute bottom-40 right-10 animate-float animation-delay-3000">
+                      <Bot className="w-8 h-8 text-gray-400 opacity-50" />
+                    </div>
+                  </div>
+
+                  <h1 className="text-center text-4xl sm:text-5xl md:text-6xl font-extrabold text-black dark:text-white mb-8 pb-2 leading-tight animate-fade-in">
+                    Find Your Perfect <span className="text-[#446cec]">College</span> Match
                   </h1>
-                  <form onSubmit={handleInitialSearch} className="w-full">
-                    <div className="relative">
+                  <form onSubmit={handleInitialSearch} className="w-full animate-fade-in-up">
+                    <div className="relative group">
                       <input 
                         type="text" 
                         placeholder="What type of colleges are you looking for?" 
-                        className="w-full py-4 sm:py-6 px-4 sm:px-7 text-base sm:text-lg rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all"
+                        className="w-full py-4 sm:py-6 px-4 sm:px-7 text-base sm:text-lg rounded-xl border border-gray-300 bg-white/80 backdrop-blur-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-300 shadow-sm hover:shadow-md"
                         value={initialQuery}
                         onChange={(e) => setInitialQuery(e.target.value)}
                       />
                       <button 
                         type="submit"
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-100 hover:bg-gray-200 text-gray-900 p-2 sm:p-2.5 rounded-lg transition-all"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white p-2 sm:p-2.5 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:bg-gray-800"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -260,7 +348,6 @@ export default function Home() {
                       </button>
                     </div>
                   </form>
-                  
                 </div>
               </div>
             )}
@@ -335,11 +422,9 @@ export default function Home() {
             {/* Results State */}
             {!isLoading && !error && currentStep === "results" && recommendations && (
               <div className="pb-10 sm:pb-20">
-     
-                
                 {/* Best Fit College - Centered */}
                 {getBestFit() && (
-                  <div className="mb-12 sm:mb-16">
+                  <div className="mb-8">
                     <div className="flex justify-center">
                       <div className="w-full max-w-3xl transform hover:scale-[1.01] sm:hover:scale-[1.02] transition-all duration-300">
                         <div className="shadow-lg rounded-xl overflow-hidden">
@@ -349,38 +434,49 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* College Categories in a row */}
-                <div className="px-4 sm:px-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 h-full">
-                    {/* Reach School */}
-                    {getReachSchools()?.length > 0 && (
-                      <div className="h-full flex flex-col">
-                        <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                          <CollegeCard college={getReachSchools()[0]} type="reach" />
-                        </div>
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 mb-12">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+                    {/* First slot: Target or Reach or Safety */}
+                    <div className="h-full flex flex-col">
+                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
+                        <CollegeCard 
+                          college={getTargetSchools()?.[0] || getReachSchools()?.[0] || getSafetySchools()?.[0]} 
+                          type={getTargetSchools()?.[0] ? "target" : (getReachSchools()?.[0] ? "reach" : "safety")}
+                        />
                       </div>
-                    )}
+                    </div>
                     
-                    {/* Target School */}
-                    {getTargetSchools()?.length > 0 && (
-                      <div className="h-full flex flex-col">
-                        <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                          <CollegeCard college={getTargetSchools()[0]} type="target" />
-                        </div>
+                    {/* Second slot: Reach or Safety or Target */}
+                    <div className="h-full flex flex-col">
+                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
+                        <CollegeCard 
+                          college={getReachSchools()?.[0] || getSafetySchools()?.[0] || getTargetSchools()?.[0]} 
+                          type={getReachSchools()?.[0] ? "reach" : (getSafetySchools()?.[0] ? "safety" : "target")}
+                        />
                       </div>
-                    )}
+                    </div>
                     
-                    {/* Safety School */}
-                    {getSafetySchools()?.length > 0 && (
-                      <div className="h-full flex flex-col">
-                        <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                          <CollegeCard college={getSafetySchools()[0]} type="safety" />
-                        </div>
+                    {/* Third slot: Safety or Target or Reach */}
+                    <div className="h-full flex flex-col">
+                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
+                        <CollegeCard 
+                          college={getSafetySchools()?.[0] || getTargetSchools()?.[0] || getReachSchools()?.[0]} 
+                          type={getSafetySchools()?.[0] ? "safety" : (getTargetSchools()?.[0] ? "target" : "reach")}
+                        />
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
+
+                {/* Conversation Thread */}
+                <ConversationThread 
+                  messages={conversationHistory}
+                  onSendMessage={handleConversationMessage}
+                  isTyping={isAiTyping}
+                  shouldScrollToSearch={shouldScrollToSearch}
+                />
               </div>
             )}
           </div>

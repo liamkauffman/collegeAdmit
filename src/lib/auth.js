@@ -1,5 +1,7 @@
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
+import { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
 
 const prisma = new PrismaClient();
 
@@ -55,4 +57,28 @@ export async function getUserById(id) {
   return prisma.user.findUnique({
     where: { id },
   });
-} 
+}
+
+/**
+ * NextAuth configuration options
+ * @type {import("next-auth").NextAuthOptions}
+ */
+export const authOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+  ],
+  callbacks: {
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.id = token.sub;
+      }
+      return session;
+    },
+  },
+  pages: {
+    signIn: '/auth/signin',
+  },
+}; 

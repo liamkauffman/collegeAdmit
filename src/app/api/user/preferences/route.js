@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request) {
     const { preferences } = await request.json();
 
     // Get the user's ID
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: session.user.email },
       select: { id: true }
     });
@@ -32,7 +32,7 @@ export async function POST(request) {
     }
 
     // Update or create user preferences in the database
-    const updatedPreferences = await prisma.userPreferences.upsert({
+    const updatedPreferences = await prisma.UserPreferences.upsert({
       where: {
         userId: user.id,
       },
@@ -72,7 +72,7 @@ export async function GET(request) {
     }
 
     // Get the user by email
-    const user = await prisma.user.findUnique({
+    const user = await prisma.User.findUnique({
       where: { email: session.user.email },
       select: { id: true }
     });
@@ -85,7 +85,7 @@ export async function GET(request) {
     }
 
     // Get the user preferences from the database
-    const preferences = await prisma.userPreferences.findUnique({
+    const preferences = await prisma.UserPreferences.findUnique({
       where: { userId: user.id },
     });
 
