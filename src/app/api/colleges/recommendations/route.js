@@ -113,7 +113,7 @@ export async function POST(request) {
                 city: college.city || null,
                 type: college.type || null,
                 tuition: college.cost ? 
-                  (college.cost.in_state_tuition || college.cost.tuition_in_state || null) : 
+                  (college.cost.amount ? parseInt(college.cost.amount) : null) : 
                   null,
                 acceptanceRate: college.acceptance_rate ? parseFloat(college.acceptance_rate) : null,
                 enrollmentSize: college.size ? 

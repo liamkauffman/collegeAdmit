@@ -22,7 +22,12 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
   const formatCost = (cost) => {
     if (!cost) return "N/A";
     
-    // Handle different cost data structures from the backend
+    // Handle new cost data structure from the backend
+    if (cost.amount) {
+      return `$${Math.round(cost.amount).toLocaleString()}`;
+    }
+    
+    // Handle legacy cost data structures as fallback
     const inState = cost.tuition_in_state || cost.in_state;
     const onCampusHousing = cost.on_campus_housing || 0;
     const booksAndSupplies = cost.books_and_supplies || 0;
