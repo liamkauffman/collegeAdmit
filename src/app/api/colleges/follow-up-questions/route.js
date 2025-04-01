@@ -126,7 +126,7 @@ export async function POST(request) {
     }
     
     // Get API URL
-    const API_URL = process.env.NEXT_PUBLIC_API_URL;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim();
     console.log("Using API URL:", API_URL);
     
     // Prepare the payload
@@ -139,8 +139,9 @@ export async function POST(request) {
     
     // Make the request to the backend
     try {
-      console.log(`Making fetch request to ${API_URL}/api/colleges/follow-up-questions`);
-      const response = await fetch(`${API_URL}/api/colleges/follow-up-questions`, {
+      const apiEndpoint = `${API_URL}/api/colleges/follow-up-questions`;
+      console.log(`Making fetch request to ${apiEndpoint}`);
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

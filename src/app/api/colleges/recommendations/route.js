@@ -50,7 +50,7 @@ export async function POST(request) {
     }
 
     // Get the API URL from environment variable or use a default
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').trim();
     console.log("Using API URL:", API_URL);
     
     // Prepare the payload for the backend request
