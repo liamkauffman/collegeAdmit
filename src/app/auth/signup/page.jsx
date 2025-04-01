@@ -95,7 +95,7 @@ export default function SignUp() {
 
   return (
     <>
-      <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+      <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center mb-4">

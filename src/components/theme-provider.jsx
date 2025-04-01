@@ -11,13 +11,13 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState("light")
 
   useEffect(() => {
-    // Check for stored preference or user's system preference
+    // Check for stored preference or use light theme as default
     const storedTheme = localStorage.getItem("theme")
     
     if (storedTheme === "light" || storedTheme === "dark" || storedTheme === "system") {
       setTheme(storedTheme)
     } else {
-      setTheme("system")
+      setTheme("light")
     }
   }, [])
 

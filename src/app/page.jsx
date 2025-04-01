@@ -37,25 +37,48 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       
+      console.log("Fetching follow-up questions for query:", initialQuery);
+      console.log("User session status:", status);
+      console.log("User preferences:", session?.user?.preferences);
+      
+      const payload = {
+        initial_query: initialQuery,
+        user_profile: session?.user?.preferences || {}
+      };
+      
+      console.log("Sending payload to follow-up questions API:", payload);
+      
       const response = await fetch('/api/colleges/follow-up-questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          initial_query: initialQuery,
-          user_profile: session?.user?.preferences || {}
-        })
+        body: JSON.stringify(payload)
       });
       
+      console.log("Follow-up questions API response status:", response.status);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch follow-up questions');
+        const contentType = response.headers.get("content-type");
+        console.log("Response content type:", contentType);
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          console.error("Error data from API:", errorData);
+          throw new Error(errorData.error || 'Failed to fetch follow-up questions');
+        } else {
+          // Handle non-JSON response
+          const text = await response.text();
+          console.error("Non-JSON error response:", text.substring(0, 500) + (text.length > 500 ? "..." : ""));
+          throw new Error(`Server returned non-JSON response with status ${response.status}`);
+        }
       }
       
       const data = await response.json();
+      console.log("Received follow-up questions:", data);
       
       if (!Array.isArray(data)) {
+        console.error("Invalid data format - expected array but got:", typeof data);
         throw new Error('Invalid response format: follow-up questions should be an array');
       }
       
