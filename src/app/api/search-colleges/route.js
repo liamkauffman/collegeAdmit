@@ -6,8 +6,9 @@ export async function POST(request) {
     const searchParams = await request.json();
     
     // Log the API URL for debugging
-    
+
     console.log(`Attempting to fetch from: ${API_URL}/search`);
+    
     
     // Make the request to your external API from the server
     const response = await fetch(`${API_URL}/api/search`, {
