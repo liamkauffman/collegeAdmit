@@ -4,8 +4,8 @@ import { mockCollegeDetails } from '@/lib/mock-college-details';
 
 export async function GET(request, { params }) {
   try {
-    // Ensure params is resolved before destructuring
-    const id = params.id;
+    // Await params before destructuring
+    const { id } = params;
     
     // Check if this is a test request
     const { searchParams } = new URL(request.url);

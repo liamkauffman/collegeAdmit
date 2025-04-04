@@ -11,6 +11,7 @@ import { AuthModal } from "@/components/auth-modal";
 import { Button } from "@/components/ui/button";
 import { Search, ClipboardEdit, Bot, Sparkles, Laptop, ClipboardCheck, Compass, GraduationCap } from "lucide-react";
 import { ConversationThread } from "@/components/conversation-thread";
+import { resetUsedImages } from "@/utils/college-images";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -30,12 +31,14 @@ export default function Home() {
   const [isAiTyping, setIsAiTyping] = useState(false);
   const [searchHistory, setSearchHistory] = useState([]);
   const [shouldScrollToSearch, setShouldScrollToSearch] = useState(false);
+  const [responseMode, setResponseMode] = useState("new_search");
   
   // Function to fetch follow-up questions
   const fetchFollowUpQuestions = async () => {
     try {
       setIsLoading(true);
       setError(null);
+      setCurrentStep("initial"); // Set to initial for correct loading animation type
       
       console.log("Fetching follow-up questions for query:", initialQuery);
       console.log("User session status:", status);
@@ -175,6 +178,9 @@ export default function Home() {
         throw new Error('Invalid response format: recommendations should be an array');
       }
       
+      // Reset used images before setting new recommendations
+      resetUsedImages();
+      
       setRecommendations(data.recommendations);
       setSearchSummary(data.search_summary || "Based on your search criteria, we've found the following recommendations.");
       setCurrentStep("results");
@@ -236,15 +242,17 @@ export default function Home() {
     setShouldScrollToSearch(false); // Reset scroll trigger
 
     try {
-      // Prepare the payload with conversation context
+      // Prepare the payload with conversation context and current recommendations
       const payload = {
         initial_query: message,
         follow_up_answers: [],
         user_profile: session?.user?.preferences || {},
-        conversation_history: conversationHistory
+        conversation_history: conversationHistory,
+        current_recommendations: recommendations || []
       };
       
-      const response = await fetch('/api/colleges/recommendations', {
+      // Use the new refinements endpoint instead of recommendations
+      const response = await fetch('/api/colleges/refinements', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -253,27 +261,66 @@ export default function Home() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch college recommendations');
+        const contentType = response.headers.get("content-type");
+        let errorMessage = 'Failed to fetch refined college recommendations';
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          // Handle non-JSON error response
+          const text = await response.text();
+          errorMessage = `Server error: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
       
+      // Clean up search summary if needed to remove any markdown formatting
+      if (data.search_summary) {
+        // Remove any markdown-style bold markers
+        data.search_summary = data.search_summary.replace(/\*\*/g, '');
+      }
+      
+      // Determine response type based on the content and behavior
+      let inferredResponseType = "general_question";
+      
+      // Check if we're getting specific information about a college
+      if (data.search_summary.includes("Details for") || 
+          data.search_summary.includes("Details about") ||
+          data.search_summary.toLowerCase().includes("information about")) {
+        inferredResponseType = "specific_info";
+      } 
+      // Check if response contains new recommendations but DON'T replace existing ones
+      else if (data.recommendations && data.recommendations.length > 0) {
+        inferredResponseType = "new_search";
+        // Note: We're NOT setting recommendations here to preserve existing display
+      }
+      
+      // Update response mode for the conversation UI
+      setResponseMode(inferredResponseType);
+      
       // Add AI response to conversation
       setConversationHistory(prev => [...prev, {
         type: 'assistant',
-        content: data.search_summary
+        content: data.search_summary,
+        responseType: inferredResponseType,
+        // Store any new recommendations in the conversation message itself
+        includedRecommendations: data.recommendations || []
       }]);
 
-      // Add new results to search history
+      // Add new results to search history without affecting the display
       setSearchHistory(prev => [...prev, {
         query: message,
         results: data.recommendations,
-        summary: data.search_summary
+        summary: data.search_summary,
+        responseType: inferredResponseType
       }]);
 
-      // Update current recommendations
-      setRecommendations(data.recommendations);
+      // Don't update recommendations state to avoid replacing the displayed colleges
+      // Only update search summary for the conversation context
       setSearchSummary(data.search_summary);
       
       // Trigger scroll after results are updated
@@ -284,6 +331,111 @@ export default function Home() {
       console.error('Error in conversation:', err);
     } finally {
       setIsAiTyping(false);
+    }
+  };
+
+  // Function to test the refinements endpoint with mock data
+  const testRefinementsEndpointWithMock = async (responseType) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Create mock queries based on the response type
+      let mockQuery = "";
+      switch (responseType) {
+        case "new_search":
+          mockQuery = "Show me colleges in California with computer science programs";
+          break;
+        case "specific_info":
+          mockQuery = "Tell me more about Stanford University";
+          break;
+        case "general_question":
+          mockQuery = "What is the highest paying job out of college?";
+          break;
+        default:
+          mockQuery = "Test mock query";
+      }
+      
+      // Add user message to conversation
+      const newMessage = { type: 'user', content: mockQuery };
+      setConversationHistory([newMessage]);
+      
+      // Prepare the payload for the backend request (without response_type to hit the real backend)
+      const payload = {
+        initial_query: mockQuery,
+        follow_up_answers: [],
+        user_profile: session?.user?.preferences || {},
+        conversation_history: [newMessage],
+        current_recommendations: []
+        // Removed response_type parameter to hit the actual backend
+      };
+      
+      const response = await fetch('/api/colleges/refinements', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        let errorMessage = 'Failed to test refinements endpoint';
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          // Handle non-JSON error response
+          const text = await response.text();
+          errorMessage = `Server error: ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      
+      // Clean up search summary if needed to remove any markdown formatting
+      if (data.search_summary) {
+        // Remove any markdown-style bold markers
+        data.search_summary = data.search_summary.replace(/\*\*/g, '');
+      }
+      
+      // Handle the response structure from the FastAPI backend
+      if (!data.recommendations || !Array.isArray(data.recommendations)) {
+        throw new Error('Invalid response format: recommendations should be an array');
+      }
+      
+      // Add AI response to conversation
+      setConversationHistory(prev => [...prev, {
+        type: 'assistant',
+        content: data.search_summary,
+        responseType: responseType // We still set this for UI purposes
+      }]);
+      
+      // Reset used images before setting new recommendations
+      resetUsedImages();
+      
+      // Update all necessary state
+      setRecommendations(data.recommendations);
+      setSearchSummary(data.search_summary || "Based on your search criteria, we've found the following recommendations.");
+      setCurrentStep("results");
+      setResponseMode(responseType);
+      
+      // Add to search history
+      setSearchHistory([{
+        query: mockQuery,
+        results: data.recommendations,
+        summary: data.search_summary,
+        responseType: responseType
+      }]);
+      
+    } catch (err) {
+      setError(err.message);
+      console.error('Error testing refinements endpoint:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -299,7 +451,7 @@ export default function Home() {
             {isLoading && (
               <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20">
                 <div className="py-10">
-                  <LoadingAnimation />
+                  <LoadingAnimation type={currentStep === "initial" ? "followup" : "colleges"} />
                 </div>
               </div>
             )}
@@ -363,7 +515,8 @@ export default function Home() {
                       />
                       <button 
                         type="submit"
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white p-2 sm:p-2.5 rounded-lg transition-all duration-300 opacity-0 group-hover:opacity-100 hover:bg-gray-800"
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white p-2 sm:p-2.5 rounded-lg transition-all duration-300 hover:opacity-100 hover:bg-gray-800"
+                        aria-label="Start search"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -377,33 +530,62 @@ export default function Home() {
 
             {/* Follow-up Questions State */}
             {!isLoading && !error && currentStep === "followup" && followUpQuestions.length > 0 && (
-              <div className="flex items-center justify-center min-h-[70vh] h-full pb-10 sm:pb-20">
+              <div className="flex flex-col items-center justify-center min-h-[70vh] h-full pb-10 sm:pb-20">
                 <div className="w-full max-w-3xl px-4 sm:px-6 py-8">
-                  <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+                  {/* Show conversation history */}
+                  <div className="mb-8 flex flex-col space-y-4">
+                    <div className="flex justify-end">
+                      <div className="max-w-[90%] p-4 rounded-2xl bg-blue-600 text-white rounded-tr-none shadow-md">
+                        <p className="whitespace-pre-line">{initialQuery}</p>
+                      </div>
+                    </div>
+                    
+                    {followUpAnswers.map((answer, index) => (
+                      <div key={index} className="flex flex-col space-y-4">
+                        <div className="flex justify-start">
+                          <div className="max-w-[90%] p-4 rounded-2xl bg-white text-gray-800 rounded-tl-none shadow-md border border-gray-100">
+                            <p className="text-gray-800 font-medium">{followUpQuestions[index].text}</p>
+                          </div>
+                        </div>
+                        <div className="flex justify-end">
+                          <div className="max-w-[90%] p-4 rounded-2xl bg-blue-600 text-white rounded-tr-none shadow-md">
+                            <p className="whitespace-pre-line">{answer.answer}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {currentQuestionIndex < followUpQuestions.length && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[90%] p-4 rounded-2xl bg-white text-gray-800 rounded-tl-none shadow-md border border-gray-100">
+                          <p className="text-gray-800 font-medium">{followUpQuestions[currentQuestionIndex].text}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                     {/* Progress Section */}
-                    <div className="mb-8">
-                      <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                          {followUpQuestions[currentQuestionIndex]?.text || "Additional Information"}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-sm text-gray-600">
+                          Question {currentQuestionIndex + 1} of {followUpQuestions.length}
                         </h2>
-                        <span className="text-sm font-medium text-gray-900">
-                          {currentQuestionIndex + 1}/{followUpQuestions.length}
-                        </span>
                       </div>
                       <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gray-900 rounded-full transition-all duration-300"
+                          className="h-full bg-[#4068ec] rounded-full transition-all duration-300"
                           style={{ width: `${((currentQuestionIndex + 1) / followUpQuestions.length) * 100}%` }}
                         ></div>
                       </div>
                     </div>
                     
                     {/* Answer Section */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                       <div className="relative">
                         <textarea 
                           placeholder="Type your answer here..."
-                          className="w-full py-4 px-6 text-base rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all min-h-[180px] shadow-sm resize-none"
+                          className="w-full py-4 px-5 text-base rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:border-transparent transition-all min-h-[120px] shadow-sm resize-none"
                           value={currentAnswer}
                           onChange={(e) => setCurrentAnswer(e.target.value)}
                           onKeyPress={handleKeyPress}
@@ -419,7 +601,7 @@ export default function Home() {
                       <div className="flex justify-end">
                         <Button 
                           onClick={handleFollowUpAnswer}
-                          className="px-8 py-3 text-base font-medium text-white bg-gray-900 rounded-xl shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 transition-all duration-300 flex items-center gap-2"
+                          className="px-6 py-2.5 text-base font-medium text-white bg-[#4068ec] rounded-xl shadow-sm hover:bg-[#3255d0] focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:ring-offset-2 transition-all duration-300 flex items-center gap-2"
                         >
                           {currentQuestionIndex === followUpQuestions.length - 1 ? (
                             <>
@@ -428,7 +610,7 @@ export default function Home() {
                             </>
                           ) : (
                             <>
-                              Next Question
+                              Next
                               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                               </svg>
@@ -459,47 +641,38 @@ export default function Home() {
                 )}
 
                 {/* College Categories in a row */}
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 mb-12">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-                    {/* First slot: Target or Reach or Safety */}
-                    <div className="h-full flex flex-col">
-                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                        <CollegeCard 
-                          college={getTargetSchools()?.[0] || getReachSchools()?.[0] || getSafetySchools()?.[0]} 
-                          type={getTargetSchools()?.[0] ? "target" : (getReachSchools()?.[0] ? "reach" : "safety")}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Second slot: Reach or Safety or Target */}
-                    <div className="h-full flex flex-col">
-                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                        <CollegeCard 
-                          college={getReachSchools()?.[0] || getSafetySchools()?.[0] || getTargetSchools()?.[0]} 
-                          type={getReachSchools()?.[0] ? "reach" : (getSafetySchools()?.[0] ? "safety" : "target")}
-                        />
-                      </div>
-                    </div>
-                    
-                    {/* Third slot: Safety or Target or Reach */}
-                    <div className="h-full flex flex-col">
-                      <div className="flex-1 shadow-md rounded-xl overflow-hidden">
-                        <CollegeCard 
-                          college={getSafetySchools()?.[0] || getTargetSchools()?.[0] || getReachSchools()?.[0]} 
-                          type={getSafetySchools()?.[0] ? "safety" : (getTargetSchools()?.[0] ? "target" : "reach")}
-                        />
-                      </div>
-                    </div>
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 mb-12">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    {/* Display all recommended colleges except the best fit */}
+                    {recommendations && recommendations
+                      .filter(college => college.category !== "best_fit")
+                      .slice(0, 4)
+                      .map((college, index) => (
+                        <div key={college.id} className="h-full flex flex-col">
+                          <div className="flex-1 shadow-md rounded-xl overflow-hidden">
+                            <CollegeCard 
+                              college={college} 
+                              type={college.category}
+                            />
+                          </div>
+                        </div>
+                      ))
+                    }
                   </div>
                 </div>
 
                 {/* Conversation Thread */}
-                <ConversationThread 
-                  messages={conversationHistory}
-                  onSendMessage={handleConversationMessage}
-                  isTyping={isAiTyping}
-                  shouldScrollToSearch={shouldScrollToSearch}
-                />
+                <div className="max-w-3xl mx-auto mt-8 px-4 sm:px-6">
+
+                  <ConversationThread 
+                    messages={conversationHistory}
+                    onSendMessage={handleConversationMessage}
+                    isTyping={isAiTyping}
+                    shouldScrollToSearch={shouldScrollToSearch}
+                    responseType={isAiTyping ? "loading" : responseMode}
+                    lastResponseSummary={searchSummary}
+                  />
+                </div>
               </div>
             )}
           </div>

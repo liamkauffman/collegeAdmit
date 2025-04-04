@@ -82,6 +82,7 @@ export default {
         "fade-in": "fadeIn 0.5s ease-out",
         "fade-in-up": "fadeInUp 0.5s ease-out",
         "pulse": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "orbit": "orbit 3s linear infinite",
       },
       keyframes: {
         "accordion-down": {
@@ -154,11 +155,20 @@ export default {
             opacity: '.5',
           },
         },
+        "orbit": {
+          "0%": {
+            transform: "rotate(0deg) translateX(12px) rotate(0deg)",
+          },
+          "100%": {
+            transform: "rotate(360deg) translateX(12px) rotate(-360deg)",
+          },
+        },
       },
   	}
   },
   plugins: [
     require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
     function({ addVariant }) {
       addVariant('mobile', '@media (max-width: 640px)');
       addVariant('desktop', '@media (min-width: 1024px)');

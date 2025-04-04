@@ -4,8 +4,9 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import NavigationBar from '@/components/navigation-bar';
-import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock, X, Download, MapPin, ArrowRight, Search } from 'lucide-react';
+import { Upload, BookOpen, GraduationCap, Heart, FileText, Edit, Plus, Check, Clock, X, Download, MapPin, ArrowRight, Search, Calendar } from 'lucide-react';
 import { FileUpload } from "@/components/ui/file-upload";
+import { motion } from 'framer-motion';
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
@@ -855,124 +856,53 @@ export default function Dashboard() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold text-gray-900">Applications</h2>
-              <button className="flex items-center text-white bg-gray-900 hover:bg-gray-800 transition-colors px-3 py-1.5 rounded-md text-sm">
-                <Plus className="h-4 w-4 mr-1" />
-                <span>New Application</span>
-              </button>
             </div>
             
-            <div className="space-y-4">
-              {/* Application Card */}
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-green-100 p-3 rounded-md mr-4">
-                    <Check className="h-6 w-6 text-green-600" />
+            <div className="flex flex-col items-center justify-center py-12">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="relative"
+              >
+                <div className="absolute -inset-10 bg-gradient-to-r from-[#4068ec]/10 to-[#63D2FF]/10 blur-3xl rounded-full opacity-70"></div>
+                <div className="relative z-10 text-center">
+                  <div className="inline-flex items-center justify-center w-24 h-24 mb-6 rounded-full bg-gradient-to-r from-[#4068ec]/10 to-[#63D2FF]/10">
+                    <FileText className="w-10 h-10 text-[#4068ec]" />
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">Stanford University</h3>
-                      <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Submitted</span>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-[#4068ec] to-[#63D2FF] bg-clip-text text-transparent mb-4">
+                    Application Tracking Coming Soon
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-8">
+                    We're building a comprehensive application management system to help you track deadlines, essays, and admissions decisions all in one place.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
+                    <div className="bg-[#f8faff] p-4 rounded-lg text-center">
+                      <Calendar className="w-6 h-6 text-[#4068ec] mx-auto mb-2" />
+                      <h3 className="text-sm font-medium text-gray-800">Deadline Tracking</h3>
                     </div>
-                    <p className="text-sm text-gray-600 mb-3">Early Decision • Computer Science</p>
-                    <div className="flex flex-wrap gap-4 mb-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Application Deadline</p>
-                        <p className="text-sm text-gray-900">November 1, 2023</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Date Submitted</p>
-                        <p className="text-sm text-gray-900">October 25, 2023</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Decision Date</p>
-                        <p className="text-sm text-gray-900">December 15, 2023</p>
-                      </div>
+                    <div className="bg-[#f8faff] p-4 rounded-lg text-center">
+                      <Edit className="w-6 h-6 text-[#4068ec] mx-auto mb-2" />
+                      <h3 className="text-sm font-medium text-gray-800">Essay Management</h3>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <div className="w-1/2 bg-gray-200 rounded-full h-2">
-                        <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
-                      </div>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        View Details
-                      </button>
+                    <div className="bg-[#f8faff] p-4 rounded-lg text-center">
+                      <Check className="w-6 h-6 text-[#4068ec] mx-auto mb-2" />
+                      <h3 className="text-sm font-medium text-gray-800">Decision Tracking</h3>
                     </div>
                   </div>
+                  
+                  <div className="w-full max-w-md mx-auto h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mb-2">
+                    <motion.div 
+                      className="h-full bg-gradient-to-r from-[#4068ec] to-[#63D2FF]"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "60%" }}
+                      transition={{ duration: 1.5, ease: "easeInOut" }}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">Development in progress - 60%</p>
                 </div>
-              </div>
-              
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 p-3 rounded-md mr-4">
-                    <Clock className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">MIT</h3>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-full">In Progress</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Regular Decision • Engineering</p>
-                    <div className="flex flex-wrap gap-4 mb-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Application Deadline</p>
-                        <p className="text-sm text-gray-900">January 5, 2024</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Date Started</p>
-                        <p className="text-sm text-gray-900">October 10, 2023</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Decision Date</p>
-                        <p className="text-sm text-gray-900">March 15, 2024</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="w-1/2 bg-gray-200 rounded-full h-2">
-                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: '65%' }}></div>
-                      </div>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        Continue
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-all">
-                <div className="flex items-start">
-                  <div className="bg-gray-100 p-3 rounded-md mr-4">
-                    <Edit className="h-6 w-6 text-gray-900" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">UC Berkeley</h3>
-                      <span className="bg-gray-100 text-gray-900 text-xs px-2 py-1 rounded-full">Not Started</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">Regular Decision • Business</p>
-                    <div className="flex flex-wrap gap-4 mb-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Application Deadline</p>
-                        <p className="text-sm text-gray-900">November 30, 2023</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Date Added</p>
-                        <p className="text-sm text-gray-900">October 5, 2023</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Decision Date</p>
-                        <p className="text-sm text-gray-900">March 31, 2024</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <div className="w-1/2 bg-gray-200 rounded-full h-2">
-                        <div className="bg-gray-500 h-2 rounded-full" style={{ width: '0%' }}></div>
-                      </div>
-                      <button className="text-gray-900 hover:bg-gray-100 px-3 py-1 rounded-md text-sm transition-colors">
-                        Start Application
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </motion.div>
             </div>
           </div>
         )}

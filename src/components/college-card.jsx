@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CollegeCompare } from '@/components/college-comparison';
 import { MapPin, Sparkles, Star } from "lucide-react";
-import { getCollegeImage } from '@/utils/college-images';
+import { getCollegeImage, resetUsedImages } from '@/utils/college-images';
 import { useSession } from "next-auth/react";
 
 export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavorited = false }) {
@@ -17,6 +17,8 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
   if (!college) return null;
 
   const collegeImage = getCollegeImage(college.id, college.name);
+  // Generate a different image on error
+  const fallbackImage = imageError ? getCollegeImage(college.id + "-fallback", college.name + " Campus") : collegeImage;
 
   // Helper functions
   const formatCost = (cost) => {
@@ -88,7 +90,7 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
   const getDesignation = () => {
     if (!college.acceptance_rate) return null;
     const rate = college.acceptance_rate * 100;
-    if (rate < 15) return 'Extreme Reach';
+    if (rate < 15) return 'Reach';
     if (rate < 30) return 'Reach';
     if (rate < 50) return 'Target';
     return 'Likely';
@@ -172,13 +174,13 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
 
   return (
     <div 
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] cursor-pointer"
       onClick={handleCardClick}
     >
       <div className="relative h-48 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10 transition-opacity group-hover:opacity-70"></div>
         <img 
-          src={imageError ? getFallbackImage(college.name) : collegeImage}
+          src={fallbackImage}
           alt={`${college.name} campus`}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           onError={() => setImageError(true)}
@@ -238,11 +240,6 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
               <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Acceptance</h4>
               <div className="flex items-center">
                 <span className="text-base font-semibold text-gray-900">{formatAcceptanceRate(college.acceptance_rate)}</span>
-                {getDesignation() && (
-                  <span className={`ml-2 ${getBadgeColor()} text-white text-xs px-2 py-0.5 rounded-full font-medium`}>
-                    {getDesignation()}
-                  </span>
-                )}
               </div>
             </div>
             
@@ -272,6 +269,11 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
 }
 
 export function CollegeCardSection({ title, colleges, type }) {
+  // Reset the used images tracking when this component mounts
+  useEffect(() => {
+    resetUsedImages();
+  }, []);
+
   return (
     <div className="mb-8">
       <h2 className="text-2xl font-bold text-[#2081C3] mb-4">{title}</h2>

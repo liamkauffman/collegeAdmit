@@ -13,6 +13,31 @@ import { mockCollegeDetails } from '@/lib/mock-college-details'
 import { motion, AnimatePresence } from "framer-motion"
 import { fetchCollegeDetails } from '@/lib/api'
 import { useSession } from "next-auth/react"
+import ReactMarkdown from 'react-markdown'
+
+// Simple function to format text with basic markdown
+const formatMarkdown = (text) => {
+  if (!text) return "";
+  
+  // Handle bold text: **text** -> <strong>text</strong>
+  let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Handle italic text: *text* -> <em>text</em>
+  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  
+  // Handle links: [text](url) -> <a href="url">text</a>
+  formatted = formatted.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-blue-600 hover:underline">$1</a>');
+  
+  // Handle lists: - item -> <li>item</li>
+  formatted = formatted.replace(/- (.*?)(?=\n|$)/g, '<li>$1</li>');
+  
+  // Wrap lists in <ul>
+  if (formatted.includes('<li>')) {
+    formatted = '<ul class="list-disc pl-4 my-2">' + formatted + '</ul>';
+  }
+  
+  return formatted;
+}
 
 export default function CollegePage() {
   const params = useParams()
@@ -266,7 +291,7 @@ export default function CollegePage() {
   // Helper function to categorize acceptance rate
   const getAcceptanceCategory = (rate) => {
     if (!rate) return "Unknown";
-    if (rate < 0.10) return "Extreme Reach";
+    if (rate < 0.10) return "Reach";
     if (rate < 0.30) return "Reach";
     if (rate < 0.60) return "Target";
     return "Safety";
@@ -292,15 +317,15 @@ export default function CollegePage() {
         sources: []
       }])
 
-      // Use the streaming vector search endpoint
-      const response = await fetch(`${API_URL}/api/colleges/vector_chat_stream`, {
+      // Use the new college chat endpoint
+      const response = await fetch(`${API_URL}/api/colleges/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: userMessage,
-          num_results: 5
+          college_name: college.name,
+          message: userMessage
         })
       })
 
@@ -352,7 +377,7 @@ export default function CollegePage() {
         } else {
           // Add a new error message
           messages.push({
-        role: 'assistant', 
+            role: 'assistant', 
             content: "I apologize, but I encountered an error processing your request. Please try again.",
             isLoading: false,
             sources: []
@@ -431,7 +456,7 @@ export default function CollegePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+      <div className="min-h-screen flex flex-col bg-white">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
           <motion.div 
@@ -449,7 +474,7 @@ export default function CollegePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+      <div className="min-h-screen flex flex-col bg-white">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-md max-w-2xl w-full p-6 m-4">
@@ -492,7 +517,7 @@ export default function CollegePage() {
 
   if (!college) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+      <div className="min-h-screen flex flex-col bg-white">
         <NavigationBar />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-[#4068ec] text-xl">College not found</div>
@@ -511,7 +536,7 @@ export default function CollegePage() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+    <div className="min-h-screen flex flex-col bg-white">
       <NavigationBar />
       
       {/* Hero Section with Parallax Effect */}
@@ -692,7 +717,7 @@ export default function CollegePage() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500">Your Chances</span>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      college.acceptance.yourChances === 'Extreme Reach' ? 'bg-red-500 text-white' :
+                      college.acceptance.yourChances === 'Reach' ? 'bg-red-500 text-white' :
                       college.acceptance.yourChances === 'Reach' ? 'bg-orange-500 text-white' :
                       college.acceptance.yourChances === 'Target' ? 'bg-green-500 text-white' :
                       'bg-blue-500 text-white'
@@ -706,15 +731,17 @@ export default function CollegePage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Academic Requirements</h3>
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
-                      <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
+                  {(college.academics.gpaRange.min !== "N/A" && college.academics.gpaRange.max !== "N/A") && (
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
+                        <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
-                    </div>
-                  </div>
+                  )}
                   
                   <div className="mb-3">
                     <div className="flex justify-between items-center mb-1">
@@ -1060,7 +1087,27 @@ export default function CollegePage() {
                                   </div>
                                 ) : (
                                   <div>
-                                    <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                    <ReactMarkdown 
+                                      className={`whitespace-pre-wrap text-sm prose prose-sm max-w-none ${
+                                        msg.role === 'user' 
+                                          ? 'prose-invert text-white prose-headings:text-white prose-p:text-white prose-strong:text-white' 
+                                          : 'prose-blue'
+                                      }`}
+                                      components={{
+                                        strong: ({node, ...props}) => <span className={`font-bold ${msg.role === 'user' ? 'text-white' : ''}`} {...props} />,
+                                        a: ({node, ...props}) => <a className={`${msg.role === 'user' ? 'text-blue-300' : 'text-blue-600'} hover:underline`} {...props} />,
+                                        ul: ({node, ...props}) => <ul className="list-disc pl-4 my-2" {...props} />,
+                                        ol: ({node, ...props}) => <ol className="list-decimal pl-4 my-2" {...props} />,
+                                        li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                        p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                        h1: ({node, ...props}) => <h1 className="text-xl font-bold my-3" {...props} />,
+                                        h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
+                                        h3: ({node, ...props}) => <h3 className="text-base font-bold my-2" {...props} />,
+                                        code: ({node, ...props}) => <code className={`px-1 py-0.5 rounded text-sm font-mono ${msg.role === 'user' ? 'bg-gray-700' : 'bg-gray-100'}`} {...props} />
+                                      }}
+                                    >
+                                      {msg.content}
+                                    </ReactMarkdown>
                                     
                                     {/* Source attribution */}
                                     {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
@@ -1154,12 +1201,12 @@ export default function CollegePage() {
                           </div>
                         </motion.div>
                       )}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2" style={{ marginBottom: '20px' }}>
                         <motion.input 
                           value={newMessage}
                           onChange={(e) => setNewMessage(e.target.value)}
                           placeholder="Ask anything about the college..."
-                          className="w-full py-3 px-4 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm"
+                          className="w-full py-5 px-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm h-14 leading-normal"
                           disabled={isSending}
                           whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
                           transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -1346,7 +1393,27 @@ export default function CollegePage() {
                   </div>
                               ) : (
                                 <div>
-                                  <div className="whitespace-pre-wrap text-sm">{msg.content}</div>
+                                  <ReactMarkdown 
+                                    className={`whitespace-pre-wrap text-sm prose prose-sm max-w-none ${
+                                      msg.role === 'user' 
+                                        ? 'prose-invert text-white prose-headings:text-white prose-p:text-white prose-strong:text-white' 
+                                        : 'prose-blue'
+                                    }`}
+                                    components={{
+                                      strong: ({node, ...props}) => <span className={`font-bold ${msg.role === 'user' ? 'text-white' : ''}`} {...props} />,
+                                      a: ({node, ...props}) => <a className={`${msg.role === 'user' ? 'text-blue-300' : 'text-blue-600'} hover:underline`} {...props} />,
+                                      ul: ({node, ...props}) => <ul className="list-disc pl-4 my-2" {...props} />,
+                                      ol: ({node, ...props}) => <ol className="list-decimal pl-4 my-2" {...props} />,
+                                      li: ({node, ...props}) => <li className="mb-1" {...props} />,
+                                      p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                      h1: ({node, ...props}) => <h1 className="text-xl font-bold my-3" {...props} />,
+                                      h2: ({node, ...props}) => <h2 className="text-lg font-bold my-2" {...props} />,
+                                      h3: ({node, ...props}) => <h3 className="text-base font-bold my-2" {...props} />,
+                                      code: ({node, ...props}) => <code className={`px-1 py-0.5 rounded text-sm font-mono ${msg.role === 'user' ? 'bg-gray-700' : 'bg-gray-100'}`} {...props} />
+                                    }}
+                                  >
+                                    {msg.content}
+                                  </ReactMarkdown>
                                   
                                   {/* Source attribution */}
                                   {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
@@ -1445,7 +1512,7 @@ export default function CollegePage() {
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Ask anything about the college..."
-                        className="w-full py-3 px-4 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm"
+                        className="w-full py-5 px-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm h-14 leading-normal"
                   disabled={isSending}
                         whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}

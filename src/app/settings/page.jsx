@@ -29,17 +29,6 @@ export default function SettingsPage() {
         },
       ]
     },
-    {
-      title: "Support",
-      items: [
-        { 
-          name: "Help Center", 
-          icon: <HelpCircle className="h-5 w-5" />, 
-          href: "/help",
-          description: "Get assistance with CollegeAdmit.AI" 
-        },
-      ]
-    }
   ]
 
   return (
