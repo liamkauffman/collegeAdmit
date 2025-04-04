@@ -377,7 +377,7 @@ export default function CollegePage() {
         } else {
           // Add a new error message
           messages.push({
-            role: 'assistant', 
+        role: 'assistant', 
             content: "I apologize, but I encountered an error processing your request. Please try again.",
             isLoading: false,
             sources: []
@@ -732,15 +732,15 @@ export default function CollegePage() {
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Academic Requirements</h3>
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
                   {(college.academics.gpaRange.min !== "N/A" && college.academics.gpaRange.max !== "N/A") && (
-                    <div className="mb-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
-                        <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
-                      </div>
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
+                      <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
                     </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
+                    </div>
+                  </div>
                   )}
                   
                   <div className="mb-3">
@@ -1411,8 +1411,8 @@ export default function CollegePage() {
                                       h3: ({node, ...props}) => <h3 className="text-base font-bold my-2" {...props} />,
                                       code: ({node, ...props}) => <code className={`px-1 py-0.5 rounded text-sm font-mono ${msg.role === 'user' ? 'bg-gray-700' : 'bg-gray-100'}`} {...props} />
                                     }}
-                                  >
-                                    {msg.content}
+                  >
+                    {msg.content}
                                   </ReactMarkdown>
                                   
                                   {/* Source attribution */}
@@ -1440,10 +1440,10 @@ export default function CollegePage() {
                                             {source}
                                           </motion.span>
                                         ))}
-                </div>
+                  </div>
                                     </motion.div>
                                   )}
-                                </div>
+                </div>
                               )}
                             </div>
                           </motion.div>

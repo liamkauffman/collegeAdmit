@@ -22,7 +22,7 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
 
   // Helper functions
   const formatCost = (cost) => {
-    if (!cost) return "N/A";
+    if (!cost) return null;
     
     // Handle new cost data structure from the backend
     if (cost.amount) {
@@ -37,7 +37,7 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
     if (inState) {
       return `$${Math.round(inState + onCampusHousing + booksAndSupplies).toLocaleString()}`;
     }
-    return "N/A";
+    return null;
   };
 
   const formatAcceptanceRate = (rate) => {
@@ -243,10 +243,12 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
               </div>
             </div>
             
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Cost</h4>
-              <p className="text-base font-semibold text-gray-900">{formatCost(college.cost)}</p>
-            </div>
+            {formatCost(college.cost) && (
+              <div>
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 mb-1">Cost</h4>
+                <p className="text-base font-semibold text-gray-900">{formatCost(college.cost)}</p>
+              </div>
+            )}
           </div>
           
           {college.ai_insight && (
