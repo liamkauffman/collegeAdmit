@@ -1,33 +1,43 @@
-import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// POST handler to refine college recommendations
+// POST handler to get college recommendations
 export async function POST(request) {
+  console.log('Starting refinements POST request');
   try {
     const body = await request.json();
-    const { initial_query, follow_up_answers, user_profile, conversation_history, current_recommendations, response_type, test_mode } = body;
+    console.log('Request body received:', Object.keys(body));
+    
+    // Extract data from request body
+    const {
+      initial_query,
+      follow_up_answers = [],
+      user_profile = {},
+      conversation_history = [],
+      current_recommendations = []
+    } = body;
     
     // Get the user's session
     let session;
     try {
       session = await getServerSession(authOptions);
+      console.log('Session status:', session ? 'Authenticated' : 'Not authenticated');
     } catch (sessionError) {
       console.error("Error getting session:", sessionError);
-      // Continue without session
       session = null;
     }
     
-    // Initialize the user context with any user_profile passed in the request
-    let userProfile = user_profile || {};
+    // Initialize the user context
+    let userProfile = { ...user_profile };
     
     // If user is authenticated, fetch their preferences from database to merge with any passed profile
     if (session?.user?.email) {
       try {
-        // Get the user from the database - correct case is "User" not "user"
+        console.log('Fetching user preferences for:', session.user.email);
+        // Get the user from the database
         const user = await prisma.User.findUnique({
           where: { email: session.user.email },
           include: { preferences: true }
@@ -38,18 +48,20 @@ export async function POST(request) {
           try {
             // Parse stored preferences which are in string format
             const storedPreferences = JSON.parse(user.preferences.data);
-            // Merge stored preferences with any provided profile data
+            // Merge stored preferences with any provided profile data, prioritizing passed profile
             userProfile = { ...storedPreferences, ...userProfile };
+            console.log('User preferences loaded successfully');
           } catch (parseError) {
             console.error("Error parsing stored preferences:", parseError);
           }
+        } else {
+          console.log('No preferences found for user');
         }
       } catch (error) {
         console.error("Error fetching user preferences:", error);
-        // Continue even if there's an error fetching preferences
       }
     }
-
+    
     // Get the API URL from environment variable or use a default
     const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').trim();
     console.log("Using API URL:", API_URL);
@@ -59,18 +71,21 @@ export async function POST(request) {
       initial_query,
       follow_up_answers,
       user_profile: userProfile,
-      conversation_history,
+      conversation_history: conversation_history
+        .map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        })),
       current_recommendations
     };
     
-    console.log("Sending refinement payload to backend:", {
-      ...payload,
-      current_recommendations: payload.current_recommendations ? 
-        `${payload.current_recommendations.length} colleges` : "none"
-    });
+    console.log("Sending payload to refinements backend:", Object.keys(payload));
     
     // Make a request to the FastAPI backend
-    const response = await fetch(`${API_URL}/api/colleges/refinements`, {
+    const apiEndpoint = `${API_URL}/api/colleges/refinements`;
+    console.log('Making fetch request to:', apiEndpoint);
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -78,52 +93,70 @@ export async function POST(request) {
       body: JSON.stringify(payload),
     });
     
-    let data;
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
-    try {
-      // Check the content type to properly handle the response
-      const contentType = response.headers.get("content-type");
+    if (!response.ok) {
+      // Check if the response is HTML (often an error page) rather than JSON
+      const contentType = response.headers.get('content-type');
+      console.log('Response content type:', contentType);
       
-      if (contentType && contentType.includes("application/json")) {
-        // If it's JSON, parse it normally
-        data = await response.json();
-      } else {
-        // If not JSON, try to get the text and format it
-        const text = await response.text();
-        console.log("Received non-JSON response:", text.substring(0, 200) + "...");
-        
-        if (!response.ok) {
-          throw new Error(`Server returned non-JSON response with status ${response.status}: ${text.substring(0, 100)}...`);
-        }
-        
-        // Try to convert the response to a valid JSON structure
-        try {
-          // First, see if maybe it's just JSON with wrong content-type
-          data = JSON.parse(text);
-        } catch (jsonError) {
-          // If not parse-able as JSON, create a simple response with the text as search_summary
-          console.log("Converting text response to JSON structure");
-          data = {
-            recommendations: [],
-            search_summary: text
-          };
-        }
+      if (contentType && contentType.includes('text/html')) {
+        // Handle HTML error responses
+        const htmlText = await response.text();
+        console.error('HTML error response received:', htmlText.substring(0, 500));
+        return new Response(JSON.stringify({ 
+          error: `Backend returned HTML instead of JSON. Status: ${response.status}` 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
-    } catch (parseError) {
-      console.error("Error parsing response:", parseError);
-      throw new Error(`Failed to parse response: ${parseError.message}`);
+      
+      try {
+        // Try to parse JSON error
+        const errorData = await response.json();
+        console.error('Error data from backend:', errorData);
+        return new Response(JSON.stringify({ 
+          error: errorData.detail || 'Failed to generate college refinements from backend' 
+        }), {
+          status: response.status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (jsonError) {
+        // If JSON parsing fails, return the raw response text (limited)
+        const text = await response.text();
+        console.error('Non-JSON error from backend:', text.substring(0, 500));
+        return new Response(JSON.stringify({ 
+          error: `Failed to parse backend response. Status: ${response.status}` 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
     
-    if (!response.ok && !data) {
-      // If we haven't handled the error yet and the response isn't OK
-      throw new Error(`Failed to refine college recommendations from backend: ${response.status} ${response.statusText}`);
+    // Check content type before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn('Unexpected content type:', contentType);
+      const text = await response.text();
+      console.error('Unexpected content:', text.substring(0, 500));
+      return new Response(JSON.stringify({ 
+        error: `Backend returned unexpected content type: ${contentType}` 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     
-    console.log(`Received ${data.recommendations?.length || 0} recommendations from refinement`, data);
+    // Parse the response from the backend
+    const data = await response.json();
+    console.log(`Received refinements response with ${data.recommendations?.length || 0} recommendations`);
     
-    // Save colleges to the database before returning them (only for new colleges)
+    // Save any new colleges to the database before returning them
     try {
-      if (data.recommendations && Array.isArray(data.recommendations)) {
+      if (data.recommendations && Array.isArray(data.recommendations) && data.recommendations.length > 0) {
         console.log(`Saving ${data.recommendations.length} colleges to the database...`);
         
         // Process each college
@@ -203,14 +236,20 @@ export async function POST(request) {
       // Continue even if there's an error saving to database
     }
     
-    // Return the recommendations
-    return NextResponse.json(data, { status: 200 });
+    // Return the refinements results
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
-    console.error('Error refining college recommendations:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to refine college recommendations' },
-      { status: 500 }
-    );
+    console.error('Error processing refinements:', error);
+    console.error('Error stack:', error.stack);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Failed to process refinements request' 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } finally {
     await prisma.$disconnect();
   }

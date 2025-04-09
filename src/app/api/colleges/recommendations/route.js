@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -6,17 +5,19 @@ import { authOptions } from "@/lib/auth";
 const prisma = new PrismaClient();
 // POST handler to get college recommendations
 export async function POST(request) {
+  console.log('Starting college recommendations POST request');
   try {
     const body = await request.json();
     const { initial_query, follow_up_answers, user_profile } = body;
+    console.log('Request body:', { initial_query, follow_up_answers });
     
     // Get the user's session
     let session;
     try {
       session = await getServerSession(authOptions);
+      console.log('Session status:', session ? 'Authenticated' : 'Not authenticated');
     } catch (sessionError) {
       console.error("Error getting session:", sessionError);
-      // Continue without session
       session = null;
     }
     
@@ -26,6 +27,7 @@ export async function POST(request) {
     // If user is authenticated, fetch their preferences from database to merge with any passed profile
     if (session?.user?.email) {
       try {
+        console.log('Fetching user preferences for:', session.user.email);
         // Get the user from the database - correct case is "User" not "user"
         const user = await prisma.User.findUnique({
           where: { email: session.user.email },
@@ -39,13 +41,15 @@ export async function POST(request) {
             const storedPreferences = JSON.parse(user.preferences.data);
             // Merge stored preferences with any provided profile data
             userProfile = { ...storedPreferences, ...userProfile };
+            console.log('User preferences loaded successfully');
           } catch (parseError) {
             console.error("Error parsing stored preferences:", parseError);
           }
+        } else {
+          console.log('No preferences found for user');
         }
       } catch (error) {
         console.error("Error fetching user preferences:", error);
-        // Continue even if there's an error fetching preferences
       }
     }
 
@@ -63,7 +67,10 @@ export async function POST(request) {
     console.log("Sending payload to backend:", payload);
     
     // Make a request to the FastAPI backend
-    const response = await fetch(`${API_URL}/api/colleges/recommendations-from-top`, {
+    const apiEndpoint = `${API_URL}/api/colleges/recommendations-from-top`;
+    console.log('Making fetch request to:', apiEndpoint);
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -71,15 +78,66 @@ export async function POST(request) {
       body: JSON.stringify(payload),
     });
     
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+    
     if (!response.ok) {
-      // If the backend returns an error, parse it and return it
-      const errorData = await response.json();
-      throw new Error(errorData.detail || 'Failed to generate college recommendations from backend');
+      // Check if the response is HTML (often an error page) rather than JSON
+      const contentType = response.headers.get('content-type');
+      console.log('Response content type:', contentType);
+      
+      if (contentType && contentType.includes('text/html')) {
+        // Handle HTML error responses
+        const htmlText = await response.text();
+        console.error('HTML error response received:', htmlText.substring(0, 500));
+        return new Response(JSON.stringify({ 
+          error: `Backend returned HTML instead of JSON. Status: ${response.status}` 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      
+      try {
+        // Try to parse JSON error
+        const errorData = await response.json();
+        console.error('Error data from backend:', errorData);
+        return new Response(JSON.stringify({ 
+          error: errorData.detail || 'Failed to generate college recommendations from backend' 
+        }), {
+          status: response.status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      } catch (jsonError) {
+        // If JSON parsing fails, return the raw response text (limited)
+        const text = await response.text();
+        console.error('Non-JSON error from backend:', text.substring(0, 500));
+        return new Response(JSON.stringify({ 
+          error: `Failed to parse backend response. Status: ${response.status}` 
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    
+    // Check content type before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn('Unexpected content type:', contentType);
+      const text = await response.text();
+      console.error('Unexpected content:', text.substring(0, 500));
+      return new Response(JSON.stringify({ 
+        error: `Backend returned unexpected content type: ${contentType}` 
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     
     // Parse the response from the backend
     const data = await response.json();
-    console.log(`Received ${data.recommendations?.length || 0} recommendations from backend`, data);
+    console.log(`Received ${data.recommendations?.length || 0} recommendations from backend`);
     
     // Save colleges to the database before returning them
     try {
@@ -164,13 +222,19 @@ export async function POST(request) {
     }
     
     // Return the recommendations
-    return NextResponse.json(data, { status: 200 });
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Error generating college recommendations:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to generate college recommendations' },
-      { status: 500 }
-    );
+    console.error('Error stack:', error.stack);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Failed to generate college recommendations' 
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } finally {
     await prisma.$disconnect();
   }
