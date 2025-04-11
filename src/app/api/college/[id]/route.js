@@ -28,6 +28,8 @@ export async function GET(request, context) {
       
       // Properly scope the response variable at this level
       let response;
+      let responseText = '';
+      
       try {
         response = await fetch(apiUrl, {
           method: 'GET',
@@ -35,6 +37,43 @@ export async function GET(request, context) {
             'Accept': 'application/json'
           }
         });
+        
+        // Check response status first
+        if (!response || !response.ok) {
+          const status = response ? response.status : 500;
+          console.log(`Backend returned error status: ${status}`);
+          
+          // If the backend returns an error, we handle it
+          let errorMessage = `Server error: ${status}`;
+          
+          try {
+            // Simple approach for error responses
+            const errorText = await response.text();
+            console.log(`Error response text: ${errorText}`);
+            
+            if (errorText && errorText.trim() !== '') {
+              try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error || errorMessage;
+              } catch (jsonError) {
+                console.log('Failed to parse error response as JSON:', jsonError);
+                errorMessage = errorText;
+              }
+            }
+          } catch (parseError) {
+            console.log('Failed to read error response text:', parseError);
+          }
+          
+          return new Response(
+            JSON.stringify({ error: errorMessage }),
+            { 
+              status,
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+        }
         
         // Stream the response instead of loading all at once
         console.log('Starting to stream response body');
@@ -57,52 +96,18 @@ export async function GET(request, context) {
             throw new Error('Response too large');
           }
           
-          result += decoder.decode(value, { stream: true });
+          const chunk = decoder.decode(value, { stream: true });
+          console.log(`Received chunk of size: ${chunk.length} bytes`);
+          result += chunk;
         }
 
-        // Now use the accumulated result
-        const responseText = result + decoder.decode(); // Flush final chunks
+        // Now use the accumulated result 
+        responseText = result + decoder.decode(); // Flush final chunks
+        console.log(`Total response size: ${responseText.length} bytes`);
+        
       } catch (directFetchError) {
         console.error('Direct fetch error:', directFetchError);
         throw directFetchError; // Re-throw to be caught by the outer catch
-      }
-      
-      if (!response || !response.ok) {
-        const status = response ? response.status : 500;
-        console.log(`Backend returned error status: ${status}`);
-        
-        // If the backend returns an error, we handle it
-        let errorMessage = `Server error: ${status}`;
-        
-        if (response) {
-          try {
-            // Use text() instead of json() to avoid ReadableStream issues
-            const errorText = await response.text();
-            console.log(`Error response text: ${errorText}`);
-            
-            if (errorText && errorText.trim() !== '') {
-              try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.message || errorData.error || errorMessage;
-              } catch (jsonError) {
-                console.log('Failed to parse error response as JSON:', jsonError);
-                errorMessage = errorText;
-              }
-            }
-          } catch (parseError) {
-            console.log('Failed to read error response text:', parseError);
-          }
-        }
-        
-        return new Response(
-          JSON.stringify({ error: errorMessage }),
-          { 
-            status,
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }
-        );
       }
       
       // Safely handle the response data
