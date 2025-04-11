@@ -1,7 +1,7 @@
 "use client";
 
-import { TestCollegeCompare } from "@/components/test-college-compare";
+import { CustomCollegeCompare } from "@/components/custom-college-compare";
 
 export function CollegeCompare() {
-  return <TestCollegeCompare />;
+  return <CustomCollegeCompare />;
 } 
