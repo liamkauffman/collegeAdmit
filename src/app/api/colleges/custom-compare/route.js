@@ -47,8 +47,10 @@ export async function POST(request) {
     });
     
     console.log('Response status:', response.status);
+    console.log('Response data type:', typeof response.data);
+    console.log('Response contains job_id:', response.data.job_id ? 'Yes' : 'No');
     
-    // Return the response from the backend
+    // Return the response from the backend (now contains job_id rather than full results)
     return new Response(JSON.stringify(response.data), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

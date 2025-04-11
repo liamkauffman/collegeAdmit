@@ -224,26 +224,56 @@ export function CustomCollegeCompare() {
     setError(null);
     
     try {
-      // Show loading indicator for large comparisons
-      const isLargeComparison = selectedColleges.length > 5;
-      const timeoutMs = isLargeComparison ? 120000 : 60000; // Longer timeout for large comparisons
-      
-      // Use the Next.js API route instead of calling the backend directly
-      const response = await axios.post(`/api/colleges/custom-compare`, {
+      // Step 1: Submit the comparison job
+      const jobResponse = await axios.post(`/api/colleges/custom-compare`, {
         college_ids: selectedColleges.map(c => c.id),
         categories: validCategories.map(c => ({
           name: c.name,
           weight: c.weight
         }))
-      }, {
-        timeout: timeoutMs
       });
       
-      setComparisonResults(response.data);
-      setStep(3); // Move to results step
+      if (jobResponse.data.status !== "queued" && !jobResponse.data.job_id) {
+        throw new Error(`Job submission failed: ${jobResponse.data.error || "Unknown error"}`);
+      }
+      
+      const jobId = jobResponse.data.job_id;
+      
+      // Step 2: Poll for results indefinitely until complete
+      let polling = true;
+      
+      while (polling) {
+        try {
+          const statusResponse = await axios.get(`/api/colleges/custom-compare/${jobId}`);
+          
+          // Check if job is complete (response will have colleges array)
+          if (statusResponse.data.colleges) {
+            setComparisonResults(statusResponse.data);
+            setStep(3); // Move to results step
+            return;
+          }
+          
+          // Check for failure
+          if (statusResponse.data.status === "failed") {
+            throw new Error(`Comparison failed: ${statusResponse.data.error || "Unknown error"}`);
+          }
+          
+          // Otherwise wait and try again
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        } catch (pollError) {
+          console.error("Error during polling:", pollError);
+          // If there's a network error during polling, retry after a delay rather than failing
+          if (!pollError.response) {
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Longer delay on network errors
+          } else {
+            // For API errors like 500, propagate the error
+            throw pollError;
+          }
+        }
+      }
     } catch (error) {
       console.error("Error comparing colleges:", error);
-      setError(error.response?.data?.error || "Failed to compare colleges");
+      setError(error.message || "Failed to compare colleges");
     } finally {
       setIsComparing(false);
     }
@@ -838,8 +868,16 @@ export function CustomCollegeCompare() {
                   transition={{ delay: 0.4 }}
                 >
                   {selectedColleges.length > 5 
-                    ? "Analyzing data for multiple colleges. This may take a minute..." 
+                    ? "Our AI is processing multiple colleges. This may take a while..." 
                     : "Our AI is analyzing your colleges based on your priorities..."}
+                </motion.p>
+                <motion.p
+                  className="text-sm text-blue-500 mt-2"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  Your comparison job is being processed. This can take a few minutes.
                 </motion.p>
               </div>
               
@@ -934,7 +972,7 @@ export function CustomCollegeCompare() {
                   }}
                 />
               </div>
-       
+
             </div>
           </motion.div>
         )}
