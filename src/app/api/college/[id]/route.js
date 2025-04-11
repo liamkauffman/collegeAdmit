@@ -1,5 +1,6 @@
 import { API_URL } from '@/config';
 import { mockCollegeDetails } from '@/lib/mock-college-details';
+import axios from 'axios';
 
 export async function GET(request, context) {
   console.log('Starting GET request for college details');
@@ -23,95 +24,23 @@ export async function GET(request, context) {
     console.log(`Making request to backend URL: ${apiUrl}`);
     
     try {
-      // Make the fetch request with explicit no-cache setting
-      console.log('Initiating fetch request to backend');
+      // Use axios instead of fetch to avoid ReadableStream issues
+      console.log('Initiating axios request to backend');
+
+      // Axios directly returns the parsed JSON data in the response.data property
+      const axiosResponse = await axios.get(apiUrl, {
+        headers: {
+          'Accept': 'application/json'
+        },
+        // Set a reasonable timeout
+        timeout: 15000
+      });
       
-      // Properly scope the response variable at this level
-      let response;
-      let responseText = '';
+      console.log(`Backend response status: ${axiosResponse.status}`);
       
-      try {
-        response = await fetch(apiUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        
-        // Check response status first
-        if (!response || !response.ok) {
-          const status = response ? response.status : 500;
-          console.log(`Backend returned error status: ${status}`);
-          
-          // If the backend returns an error, we handle it
-          let errorMessage = `Server error: ${status}`;
-          
-          try {
-            // Simple approach for error responses
-            const errorText = await response.text();
-            console.log(`Error response text: ${errorText}`);
-            
-            if (errorText && errorText.trim() !== '') {
-              try {
-                const errorData = JSON.parse(errorText);
-                errorMessage = errorData.message || errorData.error || errorMessage;
-              } catch (jsonError) {
-                console.log('Failed to parse error response as JSON:', jsonError);
-                errorMessage = errorText;
-              }
-            }
-          } catch (parseError) {
-            console.log('Failed to read error response text:', parseError);
-          }
-          
-          return new Response(
-            JSON.stringify({ error: errorMessage }),
-            { 
-              status,
-              headers: {
-                'Content-Type': 'application/json',
-              }
-            }
-          );
-        }
-        console.log("Getting response text")
-        responseText = await response.text();
-        console.log(`Total response size: ${responseText.length} bytes`);
-        
-      } catch (directFetchError) {
-        console.error('Direct fetch error:', directFetchError);
-        throw directFetchError; // Re-throw to be caught by the outer catch
-      }
-      
-      // Safely handle the response data
-      let collegeData;
-      try {
-        console.log('Reading response body');
-        // Validate that we have actual content before parsing
-        if (!responseText || responseText.trim() === '') {
-          console.log('Received empty response from server');
-          throw new Error('Empty response from server');
-        }
-        
-        // Parse the text response
-        console.log('Parsing response JSON');
-        collegeData = JSON.parse(responseText);
-        console.log('Successfully parsed college data');
-      } catch (parseError) {
-        console.error('Error parsing college data:', parseError);
-        return new Response(
-          JSON.stringify({ 
-            error: 'Invalid data received from server',
-            details: parseError.message
-          }),
-          { 
-            status: 500,
-            headers: {
-              'Content-Type': 'application/json',
-            }
-          }
-        );
-      }
+      // With axios, we can directly access the data without text() conversion
+      const collegeData = axiosResponse.data;
+      console.log('Successfully received college data');
       
       // Return the data safely
       console.log('Returning successful response with college data');
@@ -127,6 +56,24 @@ export async function GET(request, context) {
       
     } catch (fetchError) {
       console.error('Error fetching from backend:', fetchError);
+      
+      // Handle axios errors - they have a different structure than fetch errors
+      const status = fetchError.response?.status || 503;
+      let errorMessage = 'Unable to connect to college data service';
+      
+      // Extract error details from axios error structure
+      if (fetchError.response && fetchError.response.data) {
+        try {
+          const errorData = fetchError.response.data;
+          if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          } else if (errorData.error || errorData.message) {
+            errorMessage = errorData.error || errorData.message;
+          }
+        } catch (parseError) {
+          console.error('Error parsing error response:', parseError);
+        }
+      }
       
       // In development, fall back to mock data if backend is not available
       // BUT never use mock data in test mode
@@ -163,11 +110,11 @@ export async function GET(request, context) {
       console.log('Returning service unavailable error');
       return new Response(
         JSON.stringify({ 
-          error: 'Unable to connect to college data service',
+          error: errorMessage,
           details: fetchError.message
         }),
         { 
-          status: 503,
+          status,
           headers: {
             'Content-Type': 'application/json',
           }
