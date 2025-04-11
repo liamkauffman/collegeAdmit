@@ -17,14 +17,37 @@ export async function fetchCollegeDetails(collegeId) {
     
     console.log(`Fetching college details from: ${apiPath}`);
     
-    const response = await fetch(apiPath);
+    const response = await fetch(apiPath, {
+      cache: 'no-store',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Error: ${response.status}`);
+      // Use text() followed by JSON.parse() to avoid ReadableStream issues
+      const errorText = await response.text();
+      let errorMsg = `Error: ${response.status}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMsg = errorData.error || errorMsg;
+      } catch (e) {
+        // If parsing fails, use the raw text if available
+        if (errorText) errorMsg = errorText;
+      }
+      
+      throw new Error(errorMsg);
     }
     
-    const data = await response.json();
+    // Always use text() followed by JSON.parse() to avoid ReadableStream issues
+    const responseText = await response.text();
+    
+    if (!responseText || responseText.trim() === '') {
+      throw new Error('Empty response received from API');
+    }
+    
+    const data = JSON.parse(responseText);
     
     if (!data || typeof data !== 'object') {
       throw new Error('Invalid data format received from API');
@@ -47,11 +70,23 @@ export async function fetchSimilarColleges(collegeId) {
     const response = await fetch(`${API_URL}/api/college/${collegeId}/similar`);
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || `Error: ${response.status}`);
+      // Use text() followed by JSON.parse() to avoid ReadableStream issues
+      const errorText = await response.text();
+      let errorMsg = `Error: ${response.status}`;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMsg = errorData.message || errorMsg;
+      } catch (e) {
+        if (errorText) errorMsg = errorText;
+      }
+      
+      throw new Error(errorMsg);
     }
     
-    return await response.json();
+    // Always use text() followed by JSON.parse()
+    const responseText = await response.text();
+    return JSON.parse(responseText);
   } catch (error) {
     console.error("Failed to fetch similar colleges:", error);
     throw error;
