@@ -151,6 +151,9 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       
+      // Reset conversation history since this is a new search
+      setConversationHistory([]);
+      
       // Prepare the payload for the recommendations request
       const payload = {
         initial_query: initialQuery,
@@ -203,6 +206,8 @@ export default function Home() {
     setSearchSummary("");
     setCurrentStep("initial");
     setError(null);
+    setConversationHistory([]); // Clear conversation history for new search
+    resetUsedImages(); // Reset college images
   };
 
   // Categorize recommendations
@@ -235,20 +240,65 @@ export default function Home() {
 
   // Function to handle conversation messages
   const handleConversationMessage = async (message) => {
-    // Add user message to conversation
+    // Determine if this is likely a new search/query rather than a follow-up question
+    const isNewSearchQuery = (msg) => {
+      const newSearchPatterns = [
+        /show me colleges/i,
+        /find colleges/i,
+        /search for/i,
+        /looking for/i,
+        /colleges with/i,
+        /universities in/i,
+        /schools that/i,
+        /best colleges for/i,
+        /top universities/i
+      ];
+      
+      return newSearchPatterns.some(pattern => pattern.test(msg));
+    };
+    
+    // Check if this appears to be a new search query
+    const isNewSearch = isNewSearchQuery(message);
+    
+    // If this is a new search, reset the conversation history
+    const chatHistory = isNewSearch ? [] : conversationHistory;
+    
+    // Add user message to conversation (either the fresh history or existing one)
     const newMessage = { type: 'user', content: message };
-    setConversationHistory(prev => [...prev, newMessage]);
+    const updatedHistory = [...chatHistory, newMessage];
+    
+    // Update the UI with the user message
+    setConversationHistory(updatedHistory);
     setIsAiTyping(true);
     setShouldScrollToSearch(false); // Reset scroll trigger
 
     try {
-      // Prepare the payload with conversation context and current recommendations
+      // Get the displayed colleges only - these are the ones visible to the user
+      const displayedColleges = [];
+      
+      // If we have recommendations
+      if (recommendations && !isNewSearch) {
+        // Add the best fit college if it exists
+        const bestFit = recommendations.find(college => college.category === "best_fit");
+        if (bestFit) {
+          displayedColleges.push(bestFit);
+        }
+        
+        // Add up to 4 more colleges that aren't best fit
+        const otherColleges = recommendations
+          .filter(college => college.category !== "best_fit")
+          .slice(0, 4);
+        
+        displayedColleges.push(...otherColleges);
+      }
+      
+      // Prepare the payload with conversation context and ONLY displayed recommendations
       const payload = {
         initial_query: message,
         follow_up_answers: [],
         user_profile: session?.user?.preferences || {},
-        conversation_history: conversationHistory,
-        current_recommendations: recommendations || []
+        conversation_history: isNewSearch ? [newMessage] : updatedHistory,
+        current_recommendations: isNewSearch ? [] : displayedColleges
       };
       
       // Use the new refinements endpoint instead of recommendations
@@ -293,34 +343,42 @@ export default function Home() {
           data.search_summary.toLowerCase().includes("information about")) {
         inferredResponseType = "specific_info";
       } 
-      // Check if response contains new recommendations but DON'T replace existing ones
+      // Check if response contains new recommendations
       else if (data.recommendations && data.recommendations.length > 0) {
         inferredResponseType = "new_search";
-        // Note: We're NOT setting recommendations here to preserve existing display
+        
+        // If this is a new search and we have recommendations, update the displayed recommendations
+        if (isNewSearch) {
+          // Reset used images before setting new recommendations
+          resetUsedImages();
+          setRecommendations(data.recommendations);
+        }
       }
       
       // Update response mode for the conversation UI
       setResponseMode(inferredResponseType);
       
       // Add AI response to conversation
-      setConversationHistory(prev => [...prev, {
+      const aiResponse = {
         type: 'assistant',
         content: data.search_summary,
         responseType: inferredResponseType,
         // Store any new recommendations in the conversation message itself
         includedRecommendations: data.recommendations || []
-      }]);
+      };
+      
+      setConversationHistory([...updatedHistory, aiResponse]);
 
-      // Add new results to search history without affecting the display
+      // Add new results to search history
       setSearchHistory(prev => [...prev, {
         query: message,
         results: data.recommendations,
         summary: data.search_summary,
-        responseType: inferredResponseType
+        responseType: inferredResponseType,
+        isNewSearch: isNewSearch
       }]);
 
-      // Don't update recommendations state to avoid replacing the displayed colleges
-      // Only update search summary for the conversation context
+      // Only update search summary
       setSearchSummary(data.search_summary);
       
       // Trigger scroll after results are updated
@@ -360,13 +418,32 @@ export default function Home() {
       const newMessage = { type: 'user', content: mockQuery };
       setConversationHistory([newMessage]);
       
+      // Get the displayed colleges only - if using existing recommendations
+      const displayedColleges = [];
+      
+      // If we have existing recommendations and it's not a new search
+      if (recommendations && responseType !== "new_search") {
+        // Add the best fit college if it exists
+        const bestFit = recommendations.find(college => college.category === "best_fit");
+        if (bestFit) {
+          displayedColleges.push(bestFit);
+        }
+        
+        // Add up to 4 more colleges that aren't best fit
+        const otherColleges = recommendations
+          .filter(college => college.category !== "best_fit")
+          .slice(0, 4);
+        
+        displayedColleges.push(...otherColleges);
+      }
+      
       // Prepare the payload for the backend request (without response_type to hit the real backend)
       const payload = {
         initial_query: mockQuery,
         follow_up_answers: [],
         user_profile: session?.user?.preferences || {},
         conversation_history: [newMessage],
-        current_recommendations: []
+        current_recommendations: responseType === "new_search" ? [] : displayedColleges
         // Removed response_type parameter to hit the actual backend
       };
       

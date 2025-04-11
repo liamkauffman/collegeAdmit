@@ -71,11 +71,7 @@ export async function POST(request) {
       initial_query,
       follow_up_answers,
       user_profile: userProfile,
-      conversation_history: conversation_history
-        .map(msg => ({
-          role: msg.type === 'user' ? 'user' : 'assistant',
-          content: msg.content
-        })),
+      conversation_history: conversation_history,
       current_recommendations
     };
     
