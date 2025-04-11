@@ -74,35 +74,8 @@ export async function GET(request, context) {
             }
           );
         }
-        
-        // Stream the response instead of loading all at once
-        console.log('Starting to stream response body');
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let result = '';
-        let totalSize = 0;
-        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-        
-        while(true) {
-          const { done, value } = await reader.read();
-          if(done) {
-            console.log('Finished streaming response body');
-            break;
-          }
-          
-          totalSize += value.byteLength;
-          if(totalSize > MAX_SIZE) {
-            console.error('Response exceeded size limit');
-            throw new Error('Response too large');
-          }
-          
-          const chunk = decoder.decode(value, { stream: true });
-          console.log(`Received chunk of size: ${chunk.length} bytes`);
-          result += chunk;
-        }
-
-        // Now use the accumulated result 
-        responseText = result + decoder.decode(); // Flush final chunks
+        console.log("Getting response text")
+        responseText = await response.text();
         console.log(`Total response size: ${responseText.length} bytes`);
         
       } catch (directFetchError) {
