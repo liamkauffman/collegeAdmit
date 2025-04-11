@@ -2,10 +2,11 @@ import { NextResponse } from 'next/server';
 import { API_URL } from '@/config';
 import { mockCollegeDetails } from '@/lib/mock-college-details';
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    // Await params before destructuring
-    const { id } = params;
+    // Properly await the params object before accessing properties
+    const params = await context.params;
+    const id = params.id;
     
     // Check if this is a test request
     const { searchParams } = new URL(request.url);
@@ -23,15 +24,54 @@ export async function GET(request, { params }) {
       
       if (!response.ok) {
         // If the backend returns an error, we handle it
-        const errorData = await response.json();
-        return NextResponse.json(
-          { error: errorData.message || 'Failed to fetch college details' },
-          { status: response.status }
+        let errorMessage;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || 'Failed to fetch college details';
+        } catch (parseError) {
+          // If we can't parse the error response as JSON
+          errorMessage = `Server error: ${response.status}`;
+        }
+        
+        return new Response(
+          JSON.stringify({ error: errorMessage }),
+          { 
+            status: response.status,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
         );
       }
       
-      const collegeData = await response.json();
-      return NextResponse.json(collegeData);
+      // Safely handle the response data
+      let collegeData;
+      try {
+        const responseText = await response.text(); // Get raw text first
+        collegeData = JSON.parse(responseText);     // Then parse it
+      } catch (parseError) {
+        console.error('Error parsing college data:', parseError);
+        return new Response(
+          JSON.stringify({ error: 'Invalid data received from server' }),
+          { 
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
+        );
+      }
+      
+      // Return the data safely
+      return new Response(
+        JSON.stringify(collegeData),
+        { 
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
       
     } catch (fetchError) {
       console.error('Error fetching from backend:', fetchError);
@@ -43,27 +83,50 @@ export async function GET(request, { params }) {
         const mockCollege = mockCollegeDetails[id];
         
         if (mockCollege) {
-          return NextResponse.json(mockCollege);
+          return new Response(
+            JSON.stringify(mockCollege),
+            { 
+              status: 200,
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            }
+          );
         } else {
-          return NextResponse.json(
-            { error: 'College not found' },
-            { status: 404 }
+          return new Response(
+            JSON.stringify({ error: 'College not found' }),
+            { 
+              status: 404,
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            }
           );
         }
       }
       
       // In production, return a proper error
-      return NextResponse.json(
-        { error: 'Unable to connect to college data service' },
-        { status: 503 }
+      return new Response(
+        JSON.stringify({ error: 'Unable to connect to college data service' }),
+        { 
+          status: 503,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
     
   } catch (error) {
     console.error('API route error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: 'Internal server error' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 } 

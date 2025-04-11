@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { tailwindColors } from "@/lib/theme"
-import { User, LogOut, Menu, Settings } from "lucide-react"
+import { User, LogOut, Menu, Settings, Search, Building2 } from "lucide-react"
 import { SvgLogo } from "@/components/icons/SvgLogo"
 import { useSession, signOut } from "next-auth/react"
 import {
@@ -26,6 +26,16 @@ import {
 
 
 const navItems = [
+  {
+    name: "College Explore",
+    href: "/",
+    icon: <Search className="h-4 w-4 mr-2" />
+  },
+  {
+    name: "Compare Colleges",
+    href: "/compare",
+    icon: <Building2 className="h-4 w-4 mr-2" />
+  },
 ]
 
 export default function NavigationBar() {
@@ -47,28 +57,21 @@ export default function NavigationBar() {
         </div>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-4 lg:space-x-6 ml-8 mx-6">
+        <nav className="hidden md:flex items-center space-x-8 ml-10 mx-6">
           {navItems.map((item) => (
-            <Button
+            <Link
               key={item.href}
-              variant={pathname === item.href ? "default" : "ghost"}
-              className={pathname === item.href 
-                ? "bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 dark:text-gray-900" 
-                : "hover:bg-gray-100 text-gray-900 dark:text-white dark:hover:bg-gray-800"}
-              asChild
+              href={item.href}
+              className={cn(
+                "text-sm font-medium transition-colors flex items-center",
+                pathname === item.href
+                  ? "text-gray-900 dark:text-white"
+                  : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+              )}
             >
-              <Link
-                href={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors",
-                  pathname === item.href
-                    ? "text-white dark:text-gray-900"
-                    : "text-gray-900 dark:text-white"
-                )}
-              >
-                {item.name}
-              </Link>
-            </Button>
+              {item.icon}
+              {item.name}
+            </Link>
           ))}
         </nav>
         
@@ -89,18 +92,19 @@ export default function NavigationBar() {
               
               {/* Mobile Navigation */}
               <div className="flex-1">
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {navItems.map((item) => (
                     <SheetClose asChild key={item.href}>
                       <Link 
                         href={item.href}
                         className={cn(
-                          "flex items-center p-2 rounded-md",
+                          "flex items-center p-2",
                           pathname === item.href 
-                            ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white" 
-                            : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+                            ? "text-gray-900 dark:text-white font-medium" 
+                            : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                         )}
                       >
+                        {item.icon}
                         {item.name}
                       </Link>
                     </SheetClose>
@@ -108,13 +112,13 @@ export default function NavigationBar() {
                 </div>
               </div>
               
-              <div className="mt-auto space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="mt-auto space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 {isAuthenticated ? (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <SheetClose asChild>
                       <Link 
                         href="/dashboard" 
-                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
+                        className="flex items-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                       >
                         Dashboard
                       </Link>
@@ -122,7 +126,7 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/profile" 
-                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
+                        className="flex items-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                       >
                         Profile
                       </Link>
@@ -130,13 +134,13 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/settings" 
-                        className="flex items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-900 dark:text-white"
+                        className="flex items-center p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                       >
                         Settings
                       </Link>
                     </SheetClose>
                     <button 
-                      className="w-full flex items-center p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400"
+                      className="w-full flex items-center p-2 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                       onClick={() => {
                         signOut({ callbackUrl: '/' });
                       }}
@@ -150,7 +154,7 @@ export default function NavigationBar() {
                     <SheetClose asChild>
                       <Link 
                         href="/auth/signin" 
-                        className="flex items-center justify-center p-2 rounded-md bg-gray-900 hover:bg-gray-800 dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 font-medium"
+                        className="flex items-center justify-center p-2 text-gray-900 dark:text-white font-medium"
                       >
                         Sign In
                       </Link>

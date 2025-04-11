@@ -6,9 +6,7 @@ export async function POST(request) {
     const searchParams = await request.json();
     
     // Log the API URL for debugging
-
     console.log(`Attempting to fetch from: ${API_URL}/search`);
-    
     
     // Make the request to your external API from the server
     const response = await fetch(`${API_URL}/api/search`, {
@@ -24,20 +22,54 @@ export async function POST(request) {
     
     if (!response.ok) {
       // Return a more graceful error response instead of throwing
-      return NextResponse.json(
-        { error: `API responded with status: ${response.status}` }, 
-        { status: response.status }
+      return new Response(
+        JSON.stringify({ error: `API responded with status: ${response.status}` }),
+        { 
+          status: response.status,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
     
-    const data = await response.json();
-    return NextResponse.json(data);
+    // Safely handle the response data
+    try {
+      const responseText = await response.text();
+      const data = JSON.parse(responseText);
+      
+      return new Response(
+        JSON.stringify(data),
+        { 
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+    } catch (parseError) {
+      console.error('Error parsing response data:', parseError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid data received from server' }),
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+    }
   } catch (error) {
     console.error('Error in search-colleges API route:', error);
     // Return a more detailed error message
-    return NextResponse.json(
-      { error: `Failed to fetch data: ${error.message}` }, 
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: `Failed to fetch data: ${error.message}` }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 } 

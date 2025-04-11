@@ -10,7 +10,15 @@ export async function GET(request) {
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     const userId = session.user.id;
@@ -28,7 +36,15 @@ export async function GET(request) {
     });
 
     if (!resume) {
-      return NextResponse.json({ message: 'No resume found' }, { status: 404 });
+      return new Response(
+        JSON.stringify({ message: 'No resume found' }),
+        { 
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     // Format the data to match the structure expected by the frontend
@@ -82,13 +98,29 @@ export async function GET(request) {
       }
     };
 
-    return NextResponse.json(formattedData);
+    return new Response(
+      JSON.stringify(formattedData),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } catch (error) {
     console.error('Error fetching resume data:', error);
-    return NextResponse.json({ 
-      error: 'Failed to fetch resume data',
-      detail: typeof error === 'object' ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to fetch resume data',
+        detail: typeof error === 'object' ? error.message : 'Unknown error'
+      }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } finally {
     await prisma.$disconnect();
   }
