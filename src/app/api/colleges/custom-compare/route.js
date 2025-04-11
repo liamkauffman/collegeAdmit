@@ -43,7 +43,6 @@ export async function POST(request) {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 60000 // 60 second timeout (this operation can take time)
     });
     
     console.log('Response status:', response.status);
