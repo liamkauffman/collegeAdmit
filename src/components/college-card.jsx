@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CollegeCompare } from '@/components/college-comparison';
 import { MapPin, Sparkles, Star } from "lucide-react";
 import { getCollegeImage, resetUsedImages } from '@/utils/college-images';
 import { useSession } from "next-auth/react";
@@ -258,13 +257,7 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
           )}
         </div>
         
-        {/* Compare button - Always visible */}
-        <div className="mt-4 compare-button" onClick={(e) => e.stopPropagation()}>
-          <CollegeCompare 
-            college={college} 
-            onSelectCollege={handleSelectSimilarCollege}
-          />
-        </div>
+
       </div>
     </div>
   );
