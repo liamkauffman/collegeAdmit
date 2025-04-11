@@ -25,47 +25,53 @@ export async function GET(request, context) {
     try {
       // Make the fetch request with explicit no-cache setting
       console.log('Initiating fetch request to backend');
-
+      
+      // Properly scope the response variable at this level
+      let response;
       try {
-        const response = await fetch(apiUrl, {
+        response = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
         });
-      } catch (fetchError) {
-        console.error('Error fetching from backend inside try block:', fetchError);
-        throw fetchError;
+        console.log(`Backend response status: ${response.status}`);
+      } catch (directFetchError) {
+        console.error('Direct fetch error:', directFetchError);
+        throw directFetchError; // Re-throw to be caught by the outer catch
       }
       
-      
-      console.log(`Backend response status: ${response.status}`);
-      
-      if (!response.ok) {
-        console.log(`Backend returned error status: ${response.status}`);
+      if (!response || !response.ok) {
+        const status = response ? response.status : 500;
+        console.log(`Backend returned error status: ${status}`);
+        
         // If the backend returns an error, we handle it
-        let errorMessage;
-        try {
-          // Use text() instead of json() to avoid ReadableStream issues
-          const errorText = await response.text();
-          console.log(`Error response text: ${errorText}`);
+        let errorMessage = `Server error: ${status}`;
+        
+        if (response) {
           try {
-            const errorData = JSON.parse(errorText);
-            errorMessage = errorData.message || 'Failed to fetch college details';
-          } catch (jsonError) {
-            console.log('Failed to parse error response as JSON:', jsonError);
-            errorMessage = errorText || `Server error: ${response.status}`;
+            // Use text() instead of json() to avoid ReadableStream issues
+            const errorText = await response.text();
+            console.log(`Error response text: ${errorText}`);
+            
+            if (errorText && errorText.trim() !== '') {
+              try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error || errorMessage;
+              } catch (jsonError) {
+                console.log('Failed to parse error response as JSON:', jsonError);
+                errorMessage = errorText;
+              }
+            }
+          } catch (parseError) {
+            console.log('Failed to read error response text:', parseError);
           }
-        } catch (parseError) {
-          console.log('Failed to read error response text:', parseError);
-          // If we can't parse the error response
-          errorMessage = `Server error: ${response.status}`;
         }
         
         return new Response(
           JSON.stringify({ error: errorMessage }),
           { 
-            status: response.status,
+            status,
             headers: {
               'Content-Type': 'application/json',
             }
