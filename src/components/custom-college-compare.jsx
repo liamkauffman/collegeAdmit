@@ -228,7 +228,8 @@ export function CustomCollegeCompare() {
       const isLargeComparison = selectedColleges.length > 5;
       const timeoutMs = isLargeComparison ? 120000 : 60000; // Longer timeout for large comparisons
       
-      const response = await axios.post(`${API_URL}/api/colleges/custom-compare`, {
+      // Use the Next.js API route instead of calling the backend directly
+      const response = await axios.post(`/api/colleges/custom-compare`, {
         college_ids: selectedColleges.map(c => c.id),
         categories: validCategories.map(c => ({
           name: c.name,
