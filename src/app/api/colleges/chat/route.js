@@ -49,6 +49,7 @@ export async function POST(request) {
           status: response.status,
           headers: {
             'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
           }
         }
       );
@@ -86,12 +87,15 @@ export async function POST(request) {
     pump();
     
     console.log('Returning streaming response');
-    // Return the response with the transformed stream
+    // Return the response with the transformed stream and CORS headers
     return new Response(transformStream.readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
       }
     });
     
@@ -103,6 +107,7 @@ export async function POST(request) {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         }
       }
     );

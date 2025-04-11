@@ -326,8 +326,8 @@ export default function CollegePage() {
         sources: []
       }])
 
-      // Use the new college chat endpoint
-      const response = await fetch(`${API_URL}/api/colleges/chat`, {
+      // Use the local Next.js API route instead of direct backend URL
+      const response = await fetch(`/api/colleges/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
