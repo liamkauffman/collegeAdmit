@@ -35,7 +35,33 @@ export async function GET(request, context) {
             'Accept': 'application/json'
           }
         });
-        console.log(`Backend response status: ${response.status}`);
+        
+        // Stream the response instead of loading all at once
+        console.log('Starting to stream response body');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let result = '';
+        let totalSize = 0;
+        const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+        
+        while(true) {
+          const { done, value } = await reader.read();
+          if(done) {
+            console.log('Finished streaming response body');
+            break;
+          }
+          
+          totalSize += value.byteLength;
+          if(totalSize > MAX_SIZE) {
+            console.error('Response exceeded size limit');
+            throw new Error('Response too large');
+          }
+          
+          result += decoder.decode(value, { stream: true });
+        }
+
+        // Now use the accumulated result
+        const responseText = result + decoder.decode(); // Flush final chunks
       } catch (directFetchError) {
         console.error('Direct fetch error:', directFetchError);
         throw directFetchError; // Re-throw to be caught by the outer catch
@@ -83,9 +109,6 @@ export async function GET(request, context) {
       let collegeData;
       try {
         console.log('Reading response body');
-        // Always use text() instead of json() to avoid ReadableStream issues
-        const responseText = await response.text();
-        
         // Validate that we have actual content before parsing
         if (!responseText || responseText.trim() === '') {
           console.log('Received empty response from server');

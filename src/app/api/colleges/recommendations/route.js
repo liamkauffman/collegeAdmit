@@ -75,27 +75,8 @@ export async function POST(request) {
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(payload),
     });
-
-    console.log('Starting to read response stream');
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let result = '';
-    
-    console.log('Reading response stream chunks...');
-    while(true) {
-      const { done, value } = await reader.read();
-      if(done) {
-        console.log('Finished reading response stream');
-        break;
-      }
-      const chunk = decoder.decode(value, { stream: true });
-      console.log('Received chunk of length:', chunk.length);
-      result += chunk;
-    }
-
-    const responseText = result;
-    console.log('Total response length:', responseText.length);
     
     console.log('Response status:', response.status);
     console.log('Response headers:', Object.fromEntries(response.headers.entries()));
