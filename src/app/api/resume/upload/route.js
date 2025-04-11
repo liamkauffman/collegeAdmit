@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';

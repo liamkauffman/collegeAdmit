@@ -25,12 +25,20 @@ export async function GET(request, context) {
     try {
       // Make the fetch request with explicit no-cache setting
       console.log('Initiating fetch request to backend');
-      const response = await fetch(apiUrl, {
-        cache: 'no-store',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+      } catch (fetchError) {
+        console.error('Error fetching from backend inside try block:', fetchError);
+        throw fetchError;
+      }
+      
+      
       console.log(`Backend response status: ${response.status}`);
       
       if (!response.ok) {
