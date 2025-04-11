@@ -76,7 +76,16 @@ export default function CollegePage() {
         // Check if this is a test request (via URL parameter)
         const isTestMode = new URLSearchParams(window.location.search).get('test') === 'true';
         
-        const collegeData = await fetchCollegeDetails(collegeId);
+        // Add additional error handling and timeout to the fetch operation
+        let fetchPromise = fetchCollegeDetails(collegeId);
+        
+        // Set a timeout for the fetch operation (30 seconds)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timed out')), 30000)
+        );
+        
+        // Race the fetch against the timeout
+        const collegeData = await Promise.race([fetchPromise, timeoutPromise]);
         
         // Transform the API response to match expected format in UI
         const transformedData = {
@@ -184,7 +193,7 @@ export default function CollegePage() {
         setCollege(transformedData);
       } catch (error) {
         console.error("Error fetching college details:", error);
-        setError("Failed to load college details");
+        setError(`Failed to load college details: ${error.message}`);
         
         // Fallback to mock data in development environment, but not in test mode
         if (process.env.NODE_ENV === 'development' && !isTestMode) {
