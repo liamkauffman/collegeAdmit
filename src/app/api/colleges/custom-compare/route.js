@@ -43,6 +43,7 @@ export async function POST(request) {
       headers: {
         'Content-Type': 'application/json'
       },
+      timeout: 60000 
     });
     
     console.log('Response status:', response.status);
