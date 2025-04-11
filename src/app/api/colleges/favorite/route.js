@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { PrismaClient } from '@prisma/client';
-import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -10,14 +9,30 @@ export async function POST(req) {
     const session = await getServerSession(authOptions);
     
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     const { collegeId, action } = await req.json();
     console.log("Received request:", { collegeId, action, userId: session.user.id });
 
     if (!collegeId || !action) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     const userId = session.user.id;
@@ -43,10 +58,18 @@ export async function POST(req) {
       const sampleCollege = await prisma.College.findFirst();
       console.log("Sample college from database:", sampleCollege);
       
-      return NextResponse.json({ 
-        error: "College not found",
-        details: `College with ID ${collegeId} does not exist. Sample college from DB: ${sampleCollege ? 'DB has colleges' : 'No colleges in DB'}`
-      }, { status: 404 });
+      return new Response(
+        JSON.stringify({ 
+          error: "College not found",
+          details: `College with ID ${collegeId} does not exist. Sample college from DB: ${sampleCollege ? 'DB has colleges' : 'No colleges in DB'}`
+        }),
+        { 
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
     
     console.log("College found:", college.name, "with ID:", college.id);
@@ -74,14 +97,30 @@ export async function POST(req) {
       console.log("Removed college from favorites");
     }
 
-    return NextResponse.json({ success: true });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error("Error handling favorite:", errorMessage);
-    return NextResponse.json({ 
-      error: "Internal server error",
-      details: errorMessage 
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({ 
+        error: "Internal server error",
+        details: errorMessage 
+      }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } finally {
     await prisma.$disconnect();
   }
@@ -92,7 +131,15 @@ export async function GET(req) {
     const session = await getServerSession(authOptions);
     
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     const userId = session.user.id;
@@ -107,14 +154,30 @@ export async function GET(req) {
       },
     });
 
-    return NextResponse.json(favorites);
+    return new Response(
+      JSON.stringify(favorites),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     console.error("Error fetching favorites:", errorMessage);
-    return NextResponse.json({ 
-      error: "Internal server error",
-      details: errorMessage 
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({ 
+        error: "Internal server error",
+        details: errorMessage 
+      }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } finally {
     await prisma.$disconnect();
   }

@@ -16,7 +16,15 @@ export async function POST(request) {
     const session = await getServerSession(authOptions);
     if (!session) {
       console.log('Unauthorized request - no valid session');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     const formData = await request.formData();
@@ -28,7 +36,15 @@ export async function POST(request) {
 
     if (!file) {
       console.log('No file provided in request');
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'No file provided' }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     // Validate file type
@@ -40,7 +56,15 @@ export async function POST(request) {
     
     if (!allowedTypes.includes(fileExtension)) {
       console.log(`Invalid file type: ${fileExtension}. Allowed types: ${allowedTypes.join(', ')}`);
-      return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Invalid file type' }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     // Create unique filename
@@ -58,7 +82,15 @@ export async function POST(request) {
         console.log('Upload directory created successfully');
       } catch (err) {
         console.error('Error creating upload directory:', err.message);
-        return NextResponse.json({ error: 'Failed to create upload directory' }, { status: 500 });
+        return new Response(
+          JSON.stringify({ error: 'Failed to create upload directory' }),
+          { 
+            status: 500,
+            headers: {
+              'Content-Type': 'application/json',
+            }
+          }
+        );
       }
     }
 
@@ -70,7 +102,15 @@ export async function POST(request) {
       console.log('File written successfully');
     } catch (err) {
       console.error('Error writing file:', err.message);
-      return NextResponse.json({ error: 'Failed to write file' }, { status: 500 });
+      return new Response(
+        JSON.stringify({ error: 'Failed to write file' }),
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
 
     // Generate the URL to access the file
@@ -123,28 +163,52 @@ export async function POST(request) {
       await saveResumeData(userId, fileUrl, parsedData);
       
       // Return the parsed data
-      return NextResponse.json({
-        fileUrl,
-        parsedData
-      });
+      return new Response(
+        JSON.stringify({
+          fileUrl,
+          parsedData
+        }),
+        { 
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     } catch (error) {
       console.error('Error processing resume:', error.message);
       console.error(error.stack);
       
       // Still return the file URL even if parsing failed
-      return NextResponse.json({ 
-        fileUrl,
-        error: 'Resume was uploaded but parsing failed. Please try again later.',
-        errorDetails: error.message
-      }, { status: 207 }); // Status 207 "Multi-Status" indicates partial success
+      return new Response(
+        JSON.stringify({ 
+          fileUrl,
+          error: 'Resume was uploaded but parsing failed. Please try again later.',
+          errorDetails: error.message
+        }),
+        { 
+          status: 207, // Status 207 "Multi-Status" indicates partial success
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
     }
   } catch (error) {
     console.error('Error processing resume:', typeof error === 'object' ? error.message : 'Unknown error');
     console.error(error.stack);
-    return NextResponse.json({ 
-      error: 'Failed to process resume',
-      detail: typeof error === 'object' ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to process resume',
+        detail: typeof error === 'object' ? error.message : 'Unknown error'
+      }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } finally {
     try {
       await prisma.$disconnect();
@@ -157,5 +221,13 @@ export async function POST(request) {
 
 export async function GET() {
   console.log('GET request received - method not allowed');
-  return NextResponse.json({ message: 'Method not allowed' }, { status: 405 });
+  return new Response(
+    JSON.stringify({ message: 'Method not allowed' }),
+    { 
+      status: 405,
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    }
+  );
 } 

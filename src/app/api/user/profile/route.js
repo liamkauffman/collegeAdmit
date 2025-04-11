@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { PrismaClient } from '@prisma/client';
 import { authOptions } from '@/lib/auth';
@@ -11,9 +10,14 @@ export async function PUT(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ message: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -25,9 +29,14 @@ export async function PUT(request) {
 
     // Validate input
     if (!name) {
-      return NextResponse.json(
-        { message: 'Name is required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ message: 'Name is required' }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -44,18 +53,28 @@ export async function PUT(request) {
       },
     });
 
-    return NextResponse.json(
-      { 
+    return new Response(
+      JSON.stringify({ 
         message: 'Profile updated successfully',
         user: updatedUser
-      },
-      { status: 200 }
+      }),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   } catch (error) {
     console.error('Profile update error:', error);
-    return NextResponse.json(
-      { message: 'An error occurred while updating the profile' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ message: 'An error occurred while updating the profile' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 }
@@ -66,9 +85,14 @@ export async function PATCH(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ message: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -77,9 +101,14 @@ export async function PATCH(request) {
     const { preferences } = body;
 
     if (!preferences) {
-      return NextResponse.json(
-        { message: 'Preferences data is required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ message: 'Preferences data is required' }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -90,9 +119,14 @@ export async function PATCH(request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
+      return new Response(
+        JSON.stringify({ message: 'User not found' }),
+        { 
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -110,15 +144,25 @@ export async function PATCH(request) {
       },
     });
 
-    return NextResponse.json(
-      { message: 'Preferences saved successfully' },
-      { status: 200 }
+    return new Response(
+      JSON.stringify({ message: 'Preferences saved successfully' }),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   } catch (error) {
     console.error('Preferences update error:', error);
-    return NextResponse.json(
-      { message: 'An error occurred while updating preferences' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ message: 'An error occurred while updating preferences' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 }
@@ -129,9 +173,14 @@ export async function GET(request) {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user) {
-      return NextResponse.json(
-        { message: 'Unauthorized' },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ message: 'Unauthorized' }),
+        { 
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
@@ -151,18 +200,36 @@ export async function GET(request) {
     });
 
     if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
+      return new Response(
+        JSON.stringify({ message: 'User not found' }),
+        { 
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
 
-    return NextResponse.json({ user }, { status: 200 });
+    return new Response(
+      JSON.stringify({ user }),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } catch (error) {
     console.error('Profile fetch error:', error);
-    return NextResponse.json(
-      { message: 'An error occurred while fetching the profile' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ message: 'An error occurred while fetching the profile' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 } 

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { API_URL } from '@/config';
 import { mockCollegeDetails } from '@/lib/mock-college-details';
 

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { ReadableStream, TransformStream } from 'web-streams-polyfill';
 
 export async function POST(request) {
@@ -7,9 +6,14 @@ export async function POST(request) {
     const { college_name, message } = body;
     
     if (!college_name || !message) {
-      return NextResponse.json(
-        { error: 'College name and message are required' },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: 'College name and message are required' }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
     
@@ -31,9 +35,14 @@ export async function POST(request) {
     if (!response.ok) {
       // If the backend returns an error
       console.error(`Backend error: ${response.status} ${response.statusText}`);
-      return NextResponse.json(
-        { error: 'Failed to get chat response from backend' },
-        { status: response.status }
+      return new Response(
+        JSON.stringify({ error: 'Failed to get chat response from backend' }),
+        { 
+          status: response.status,
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
       );
     }
     
@@ -76,9 +85,14 @@ export async function POST(request) {
     
   } catch (error) {
     console.error('Error in chat API route:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to process chat request' },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({ error: error.message || 'Failed to process chat request' }),
+      { 
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
     );
   }
 } 

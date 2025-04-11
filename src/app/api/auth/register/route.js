@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createUser, getUserByEmail } from '@/lib/auth';
 
 export async function POST(request) {
