@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { fetchCollegeDetails } from '@/lib/api'
 import { useSession } from "next-auth/react"
 import ReactMarkdown from 'react-markdown'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Simple function to format text with basic markdown
 const formatMarkdown = (text) => {
@@ -56,6 +57,11 @@ export default function CollegePage() {
   const sectionsRef = useRef({})
   const [scrollY, setScrollY] = useState(0)
   const [isStarred, setIsStarred] = useState(false)
+  const [academicMetrics, setAcademicMetrics] = useState({
+    gpa: '',
+    satScore: '',
+    actScore: ''
+  })
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -106,8 +112,9 @@ export default function CollegePage() {
             category: getSizeCategory(collegeData.size?.total_enrollment),
             students: collegeData.size?.total_enrollment || 0
           },
-          // Extract major names from top_majors array of objects
+          // Extract complete major data including links
           majors: collegeData.top_majors?.map(major => major.name) || [],
+          top_majors: collegeData.top_majors || [],  // Add this line to store complete major objects
           academics: {
             gpaRange: { min: "N/A", max: "N/A" },
             satRange: { 
@@ -463,6 +470,31 @@ export default function CollegePage() {
     return () => window.removeEventListener('resize', handleResize)
   }, [isChatOpen])
 
+  // Add effect to fetch user's academic metrics
+  useEffect(() => {
+    const fetchUserMetrics = async () => {
+      if (session) {
+        try {
+          const response = await fetch('/api/user/preferences');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.preferences) {
+              setAcademicMetrics({
+                gpa: data.preferences.gpa || '',
+                satScore: data.preferences.testScores?.sat || '',
+                actScore: data.preferences.testScores?.act || ''
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user metrics:', error);
+        }
+      }
+    };
+    
+    fetchUserMetrics();
+  }, [session]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -671,59 +703,144 @@ export default function CollegePage() {
           <div className="p-6">
             <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Majors</h2>
             
-            <div className="mb-4">
-              <label htmlFor="major-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Select a Major
-              </label>
-              <select 
-                id="major-select"
-                className="w-full md:w-1/2 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#63D2FF] focus:border-[#63D2FF]"
-                value={selectedMajor || ""}
-                onChange={(e) => setSelectedMajor(e.target.value || null)}
-              >
-                <option value="">All Majors</option>
-                {college.majors.map((major, index) => (
-                  <option key={index} value={major}>{major}</option>
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Popular Majors</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {college.top_majors?.map((major, index) => (
+                  <div 
+                    key={index}
+                    onClick={() => setSelectedMajor(major.name === selectedMajor ? null : major.name)}
+                    className={`group relative rounded-lg p-4 transition-all duration-200 cursor-pointer ${
+                      selectedMajor === major.name 
+                        ? 'bg-[#4068ec] text-white shadow-md' 
+                        : 'bg-[#F7F9F9] hover:bg-[#EDF3F8] text-gray-800 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium truncate pr-2">{major.name}</h4>
+                      {major.popularity && (
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          selectedMajor === major.name 
+                            ? 'bg-white/20 text-white' 
+                            : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {(major.popularity * 100).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                    
+                    {major.ranking && (
+                      <div className={`text-xs mb-1 ${selectedMajor === major.name ? 'text-white/90' : 'text-gray-600'}`}>
+                        Ranking: #{major.ranking}
+                      </div>
+                    )}
+                    
+                    {major.admission_rate && (
+                      <div className={`text-xs mb-1 ${selectedMajor === major.name ? 'text-white/90' : 'text-gray-600'}`}>
+                        Admission: {(major.admission_rate * 100).toFixed(1)}%
+                      </div>
+                    )}
+                    
+                    {major.source_url && (
+                      <a 
+                        href={major.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className={`text-xs font-medium flex items-center mt-2 ${
+                          selectedMajor === major.name 
+                            ? 'text-white/90 hover:text-white' 
+                            : 'text-blue-600 hover:text-blue-700'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Learn More
+                      </a>
+                    )}
+                    
+                    <div className={`absolute bottom-0 left-0 h-1 transition-all duration-300 ${
+                      selectedMajor === major.name 
+                        ? 'bg-white/30 w-full'
+                        : 'bg-[#4068ec]/30 group-hover:w-full w-0'
+                    }`}></div>
+                  </div>
                 ))}
-              </select>
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {college.majors.slice(0, 10).map((major, index) => (
-                <span 
-                  key={index} 
-                  className={`inline-block px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-colors ${selectedMajor === major ? 'bg-[#4068ec] text-white' : 'bg-[#F7F9F9] text-gray-700 hover:bg-[#BED8D4]/50'}`}
-                  onClick={() => setSelectedMajor(major === selectedMajor ? null : major)}
-                >
-                  {major}
-                </span>
-              ))}
-              {college.majors.length > 10 && (
-                <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[#F7F9F9] text-gray-700">
-                  +{college.majors.length - 10} more
-                </span>
-              )}
+              </div>
             </div>
           </div>
         </div>
         
         <div ref={el => sectionsRef.current['acceptance'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Acceptance</h2>
+            <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Acceptance Information</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Acceptance Rate</h3>
+                <div className="flex items-center">
+                  <div className="text-3xl font-bold text-gray-800">{college.acceptance.rate}</div>
+                  <div className="ml-4 flex items-center">
+                    {(() => {
+                      let difficultyText = "";
+                      let difficultyColor = "";
+                      
+                      if (college.acceptance.rate < 10) {
+                        difficultyText = "Extremely Competitive";
+                        difficultyColor = "bg-red-600";
+                      } else if (college.acceptance.rate < 20) {
+                        difficultyText = "Highly Competitive";
+                        difficultyColor = "bg-orange-500";
+                      } else if (college.acceptance.rate < 35) {
+                        difficultyText = "Very Competitive";
+                        difficultyColor = "bg-yellow-500";
+                      } else if (college.acceptance.rate < 50) {
+                        difficultyText = "Competitive";
+                        difficultyColor = "bg-blue-500";
+                      } else if (college.acceptance.rate < 70) {
+                        difficultyText = "Moderately Competitive";
+                        difficultyColor = "bg-green-500";
+                      } else {
+                        difficultyText = "Less Competitive";
+                        difficultyColor = "bg-green-600";
+                      }
+                      
+                      return (
+                        <span className={`${difficultyColor} text-white text-xs px-2 py-1 rounded-full`}>
+                          {difficultyText}
+                        </span>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  This is the percentage of applicants who are offered admission.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">International Students</h3>
+                <div className="flex items-center">
+                  <div className="text-3xl font-bold text-gray-800">{college.acceptance.internationalStudents}</div>
+                  <div className="ml-4 flex items-center">
+                    <span className="text-sm text-gray-600">
+                      {college.acceptance.internationalStudents === "N/A" ? "Not Available" : "%"}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  This is the percentage of international students.
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">General Acceptance</h3>
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">Acceptance Rate</span>
-                    <span className="font-bold text-gray-800">{college.acceptance.rate}</span>
-                  </div>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-500">International Students</span>
-                    <span className="font-bold text-gray-800">{college.acceptance.internationalStudents}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-gray-500">Your Chances</span>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       college.acceptance.yourChances === 'Reach' ? 'bg-red-500 text-white' :
@@ -740,39 +857,97 @@ export default function CollegePage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Academic Requirements</h3>
                 <div className="bg-[#F7F9F9] p-4 rounded-lg">
-                  {(college.academics.gpaRange.min !== "N/A" && college.academics.gpaRange.max !== "N/A") && (
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-500">GPA Range (25-75%)</span>
-                      <span className="font-bold text-gray-800">{college.academics.gpaRange.min} - {college.academics.gpaRange.max}</span>
+                  {/* SAT Score Range */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>SAT Score Range</span>
+                      <span>{college.academics.satRange.min} - {college.academics.satRange.max}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '60%' }}></div>
+                    <div className="relative h-2">
+                      <div className="h-2 bg-gray-200 rounded-full">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full absolute" 
+                          style={{ 
+                            width: `${
+                              college.academics.satRange.min !== "N/A" && college.academics.satRange.max !== "N/A" 
+                                ? ((parseInt(college.academics.satRange.max) - parseInt(college.academics.satRange.min)) / 1600) * 100
+                                : 0
+                            }%`,
+                            left: `${
+                              college.academics.satRange.min !== "N/A" 
+                                ? (parseInt(college.academics.satRange.min) / 1600) * 100 
+                                : 0
+                            }%`
+                          }}
+                        />
+                      </div>
+                      
+                      {/* User's SAT score marker */}
+                      {academicMetrics?.satScore && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-yellow-400 border-2 border-white rounded-full shadow-md transform -translate-x-1/2 transition-all hover:scale-110 cursor-pointer"
+                                style={{ 
+                                  left: `${(parseInt(academicMetrics.satScore) / 1600) * 100}%` 
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs font-medium">This is you: {academicMetrics.satScore}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </div>
-                  )}
-                  
-                  <div className="mb-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium text-gray-500">SAT Range (25-75%)</span>
-                      <span className="font-bold text-gray-800">{college.academics.satRange.min} - {college.academics.satRange.max}</span>
+
+                  {/* ACT Score Range */}
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>ACT Score Range</span>
+                      <span>{college.academics.actRange.min} - {college.academics.actRange.max}</span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '70%' }}></div>
+                    <div className="relative h-2">
+                      <div className="h-2 bg-gray-200 rounded-full">
+                        <div 
+                          className="h-full bg-blue-500 rounded-full absolute" 
+                          style={{ 
+                            width: `${
+                              college.academics.actRange.min !== "N/A" && college.academics.actRange.max !== "N/A" 
+                                ? ((parseInt(college.academics.actRange.max) - parseInt(college.academics.actRange.min)) / 36) * 100
+                                : 0
+                            }%`,
+                            left: `${
+                              college.academics.actRange.min !== "N/A" 
+                                ? (parseInt(college.academics.actRange.min) / 36) * 100 
+                                : 0
+                            }%`
+                          }}
+                        />
+                      </div>
+                      
+                      {/* User's ACT score marker */}
+                      {academicMetrics?.actScore && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div 
+                                className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-yellow-400 border-2 border-white rounded-full shadow-md transform -translate-x-1/2 transition-all hover:scale-110 cursor-pointer"
+                                style={{ 
+                                  left: `${(parseInt(academicMetrics.actScore) / 36) * 100}%` 
+                                }}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs font-medium">This is you: {academicMetrics.actScore}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   </div>
-                  
-                  {college.academics.actRange && (
-                    <div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-sm font-medium text-gray-500">ACT Range (25-75%)</span>
-                        <span className="font-bold text-gray-800">{college.academics.actRange.min} - {college.academics.actRange.max}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-[#4068ec] h-2 rounded-full" style={{ width: '65%' }}></div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
               
@@ -1420,8 +1595,8 @@ export default function CollegePage() {
                                       h3: ({node, ...props}) => <h3 className="text-base font-bold my-2" {...props} />,
                                       code: ({node, ...props}) => <code className={`px-1 py-0.5 rounded text-sm font-mono ${msg.role === 'user' ? 'bg-gray-700' : 'bg-gray-100'}`} {...props} />
                                     }}
-                  >
-                    {msg.content}
+                                  >
+                                    {msg.content}
                                   </ReactMarkdown>
                                   
                                   {/* Source attribution */}

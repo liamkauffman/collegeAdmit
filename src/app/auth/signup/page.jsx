@@ -84,12 +84,12 @@ export default function SignUp() {
         }),
       });
       
-      // Redirect to dashboard after collecting preferences
-      router.push('/dashboard');
+      // Redirect to homepage (college explore) after collecting preferences
+      router.push('/');
     } catch (error) {
       console.error("Error saving preferences:", error);
       // Still redirect even if preferences save fails
-      router.push('/dashboard');
+      router.push('/');
     }
   };
 

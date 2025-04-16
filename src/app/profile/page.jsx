@@ -64,6 +64,7 @@ export default function Profile() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-950">
         <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-900 dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Loading...</h2>
           <p className="text-gray-600 dark:text-gray-400">Please wait while we load your profile</p>
         </div>

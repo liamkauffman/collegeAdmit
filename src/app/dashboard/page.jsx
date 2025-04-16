@@ -31,6 +31,7 @@ export default function Dashboard() {
 
   // Add state for onboarding data
   const [onboardingData, setOnboardingData] = useState({
+    education: '',
     gpa: '',
     testScores: { sat: '', act: '' },
     majors: '',
@@ -76,6 +77,7 @@ export default function Dashboard() {
             });
             // Set onboarding data
             setOnboardingData({
+              education: prefs.education || '',
               gpa: prefs.gpa || '',
               testScores: prefs.testScores || { sat: '', act: '' },
               majors: prefs.majors || '',
@@ -392,10 +394,11 @@ export default function Dashboard() {
 
   if (status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#F7F9F9] to-[#BED8D4]">
+      <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-[#2081C3]">Loading...</h2>
-          <p className="text-[#2081C3]/80">Please wait while we load your dashboard</p>
+          <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Loading...</h2>
+          <p className="text-gray-600">Please wait while we load your dashboard</p>
         </div>
       </div>
     );
@@ -438,16 +441,6 @@ export default function Dashboard() {
             >
               Favorite Colleges
             </button>
-            <button 
-              onClick={() => setActiveTab('applications')}
-              className={`px-4 py-2 font-medium text-sm transition-colors ${
-                activeTab === 'applications' 
-                  ? 'text-gray-900 border-b-2 border-gray-900' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Applications
-            </button>
           </div>
         </div>
         
@@ -466,7 +459,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                   <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-gray-900">Loading your academic profile...</p>
+                  <p className="text-gray-600">Loading your academic profile...</p>
                 </div>
               </div>
             ) : error ? (
@@ -539,6 +532,22 @@ export default function Dashboard() {
                   
                   <div className="space-y-4">
                     
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Education Level</label>
+                      <select
+                        value={onboardingData.education}
+                        onChange={(e) => handleOnboardingChange('education', e.target.value)}
+                        className="bg-white border border-gray-300 rounded-md py-2 px-3 text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-gray-900 transition-all"
+                      >
+                        <option value="">Select education level</option>
+                        <option value="high-school">High School</option>
+                        <option value="ged">GED</option>
+                        <option value="associate">Associate</option>
+                        <option value="bachelor">Bachelor's</option>
+                        <option value="master">Master's</option>
+                        <option value="doctorate">Doctorate</option>
+                      </select>
+                    </div>
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1">College Type</label>
@@ -555,7 +564,6 @@ export default function Dashboard() {
                       </select>
                     </div>
                     
-            
                     <div>
                       <label className="block text-sm font-medium text-gray-900 mb-1">Extracurriculars</label>
                       <div className="space-y-2">
@@ -744,7 +752,7 @@ export default function Dashboard() {
             
             {loadingFavorites ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-10 h-10 border-2 border-[#2081C3] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <p className="text-gray-600">Loading your favorite colleges...</p>
               </div>
             ) : favoritesError ? (

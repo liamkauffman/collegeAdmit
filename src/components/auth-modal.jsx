@@ -114,15 +114,15 @@ export function AuthModal({ isOpen, onClose, redirectPath = "/", actionType = "s
         throw new Error("Failed to save preferences");
       }
       
-      // Close all dialogs and refresh page
+      // Close all dialogs and redirect to homepage (college explore)
       setShowOnboarding(false);
       onClose();
-      router.refresh();
+      router.push('/');
     } catch (error) {
       console.error("Error saving onboarding answers:", error);
       setShowOnboarding(false);
       onClose();
-      router.refresh();
+      router.push('/');
     }
   };
 

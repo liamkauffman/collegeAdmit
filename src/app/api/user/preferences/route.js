@@ -20,6 +20,11 @@ export async function POST(request) {
     // Get the preferences data from the request body
     const { preferences } = await request.json();
     console.log('Received preferences data:', preferences);
+    
+    // Log details about specific fields to help debug
+    console.log('Education field:', preferences.education);
+    console.log('GPA field:', preferences.gpa);
+    console.log('Number of fields in preferences:', Object.keys(preferences).length);
 
     // Get the user's ID
     const user = await prisma.User.findUnique({
@@ -109,6 +114,7 @@ export async function GET(request) {
       // Instead of returning 404, return empty preferences
       return new Response(JSON.stringify({ 
         preferences: {
+          education: '',
           gpa: '',
           satScore: '',
           actScore: '',

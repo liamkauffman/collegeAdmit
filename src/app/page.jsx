@@ -33,6 +33,127 @@ export default function Home() {
   const [shouldScrollToSearch, setShouldScrollToSearch] = useState(false);
   const [responseMode, setResponseMode] = useState("new_search");
   
+  // Function to fetch a single follow-up question
+  const fetchSingleFollowUpQuestion = async () => {
+    try {
+      setIsAiTyping(true); // Use AI typing indicator instead of full-screen loading for follow-up questions
+      setError(null);
+      
+      console.log("Fetching a single follow-up question");
+      console.log("User session status:", status);
+      
+      // Build conversation history for the request
+      // Use the existing conversationHistory if available, otherwise create a new one
+      let history = [...conversationHistory];
+      
+      // If conversation history is empty, initialize it with the initial query
+      if (history.length === 0 && initialQuery) {
+        history.push({
+          type: "user",
+          content: initialQuery
+        });
+      }
+      
+      // If we have follow-up answers, make sure they're reflected in the conversation history
+      // This ensures we're not missing any recent Q&A interactions
+      if (followUpAnswers.length > 0) {
+        // Check if we need to add the latest question and answer
+        const latestAnswerIndex = followUpAnswers.length - 1;
+        const shouldAddLatestInteraction = 
+          history.findIndex(msg => 
+            msg.type === "assistant" && 
+            msg.content === followUpQuestions[latestAnswerIndex].text
+          ) === -1;
+          
+        if (shouldAddLatestInteraction) {
+          // Add the question
+          history.push({
+            type: "assistant",
+            content: followUpQuestions[latestAnswerIndex].text
+          });
+          
+          // Add the answer
+          history.push({
+            type: "user",
+            content: followUpAnswers[latestAnswerIndex].answer
+          });
+        }
+      }
+      
+      // Make sure the conversation history is updated in the state
+      setConversationHistory(history);
+      
+      const payload = {
+        initial_query: initialQuery,
+        user_profile: session?.user?.preferences || {},
+        conversation_history: history
+      };
+      
+      console.log("Sending payload to follow-up question API:", payload);
+      
+      const response = await fetch('/api/colleges/follow-up-question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      console.log("Follow-up question API response status:", response.status);
+      
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        console.log("Response content type:", contentType);
+        
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          console.error("Error data from API:", errorData);
+          throw new Error(errorData.error || 'Failed to fetch follow-up question');
+        } else {
+          // Handle non-JSON response
+          const text = await response.text();
+          console.error("Non-JSON error response:", text.substring(0, 500) + (text.length > 500 ? "..." : ""));
+          throw new Error(`Server returned non-JSON response with status ${response.status}`);
+        }
+      }
+      
+      const data = await response.json();
+      console.log("Received follow-up question:", data);
+      
+      // Check if we received a valid question
+      if (!data || !data.text) {
+        throw new Error('Invalid response format: follow-up question should have text property');
+      }
+      
+      // Add the new question to the list
+      const questionData = {
+        question_id: data.question_id || `q_${followUpQuestions.length + 1}`,
+        text: data.text
+      };
+      
+      // Update questions and set proper index for the new question
+      setFollowUpQuestions(prev => {
+        const newQuestions = [...prev, questionData];
+        // Set currentQuestionIndex to point to the newly added question
+        setCurrentQuestionIndex(newQuestions.length - 1);
+        return newQuestions;
+      });
+      
+      // Add the AI question to the conversation history
+      setConversationHistory(prev => [...prev, {
+        type: "assistant",
+        content: data.text
+      }]);
+      
+      setCurrentStep("followup");
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching follow-up question:', err);
+    } finally {
+      setIsAiTyping(false); // Turn off typing indicator when done
+    }
+  };
+
   // Function to fetch follow-up questions
   const fetchFollowUpQuestions = async () => {
     try {
@@ -100,13 +221,28 @@ export default function Home() {
     e.preventDefault();
     if (!initialQuery.trim()) return;
     
+    // Reset state for a new search
+    setFollowUpQuestions([]);
+    setFollowUpAnswers([]);
+    setCurrentQuestionIndex(0);
+    setIsLoading(true); // Use full-screen loading for initial search
+    
+    // Initialize conversation history with the initial query
+    setConversationHistory([{
+      type: "user",
+      content: initialQuery
+    }]);
+    
     // Check if user is authenticated
     if (status === "authenticated") {
-      fetchFollowUpQuestions();
+      fetchSingleFollowUpQuestion().finally(() => {
+        setIsLoading(false); // Turn off full loading after the first question is fetched
+      });
     } else {
       // Save the query and show the auth modal
       setSavedQuery(initialQuery);
       setShowAuthModal(true);
+      setIsLoading(false);
     }
   };
 
@@ -117,8 +253,24 @@ export default function Home() {
     // If user is now authenticated and we have a saved query, continue with search
     if (status === "authenticated" && savedQuery) {
       setInitialQuery(savedQuery);
+      setIsLoading(true); // Show full-screen loading during initial search
+      
+      // Initialize conversation history with the saved query
+      setConversationHistory([{
+        type: "user",
+        content: savedQuery
+      }]);
+      
       setSavedQuery("");
-      fetchFollowUpQuestions();
+      // Reset existing questions and answers for new search
+      setFollowUpQuestions([]);
+      setFollowUpAnswers([]);
+      setCurrentQuestionIndex(0);
+      
+      // Begin fetching the follow-up question
+      fetchSingleFollowUpQuestion().finally(() => {
+        setIsLoading(false); // Hide full-screen loading after initial question is fetched
+      });
     }
   };
 
@@ -133,15 +285,21 @@ export default function Home() {
       answer: currentAnswer
     });
     setFollowUpAnswers(newAnswers);
+    
+    // Add the user's answer to the conversation history
+    setConversationHistory(prev => [...prev, {
+      type: "user",
+      content: currentAnswer
+    }]);
+    
     setCurrentAnswer("");
     
-    // Check if this was the last question
-    if (currentQuestionIndex < followUpQuestions.length - 1) {
-      // Move to the next question
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      // All questions answered, get recommendations
+    // Once we have 3 questions answered, get recommendations
+    if (newAnswers.length >= 3) {
       getCollegeRecommendations(newAnswers);
+    } else {
+      // Otherwise, fetch the next question
+      fetchSingleFollowUpQuestion();
     }
   };
 
@@ -524,7 +682,7 @@ export default function Home() {
         <div className="flex flex-col lg:flex-row h-full">
           {/* Main Content */}
           <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden">
-            {/* Loading State */}
+            {/* Loading State - Only for initial search or college recommendations, not for follow-up questions */}
             {isLoading && (
               <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20">
                 <div className="py-10">
@@ -617,6 +775,7 @@ export default function Home() {
                       </div>
                     </div>
                     
+                    {/* Previous Q&A pairs */}
                     {followUpAnswers.map((answer, index) => (
                       <div key={index} className="flex flex-col space-y-4">
                         <div className="flex justify-start">
@@ -632,10 +791,24 @@ export default function Home() {
                       </div>
                     ))}
                     
-                    {currentQuestionIndex < followUpQuestions.length && (
+                    {/* Current question - only show if we have a question at currentQuestionIndex and not typing */}
+                    {followUpQuestions[currentQuestionIndex] && !isAiTyping && followUpQuestions.length > followUpAnswers.length && (
                       <div className="flex justify-start">
                         <div className="max-w-[90%] p-4 rounded-2xl bg-white text-gray-800 rounded-tl-none shadow-md border border-gray-100">
                           <p className="text-gray-800 font-medium">{followUpQuestions[currentQuestionIndex].text}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* AI typing indicator for follow-up questions */}
+                    {isAiTyping && (
+                      <div className="flex justify-start">
+                        <div className="max-w-[90%] p-4 rounded-2xl bg-white text-gray-800 rounded-tl-none shadow-md border border-gray-100">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -646,13 +819,13 @@ export default function Home() {
                     <div className="mb-6">
                       <div className="flex items-center justify-between mb-3">
                         <h2 className="text-sm text-gray-600">
-                          Question {currentQuestionIndex + 1} of {followUpQuestions.length}
+                          Question {followUpAnswers.length + 1} of 3
                         </h2>
                       </div>
                       <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-[#4068ec] rounded-full transition-all duration-300"
-                          style={{ width: `${((currentQuestionIndex + 1) / followUpQuestions.length) * 100}%` }}
+                          style={{ width: `${((followUpAnswers.length + 1) / 3) * 100}%` }}
                         ></div>
                       </div>
                     </div>
@@ -672,6 +845,7 @@ export default function Home() {
                               handleFollowUpAnswer();
                             }
                           }}
+                          disabled={isAiTyping}
                         />
                       </div>
                       
@@ -679,8 +853,9 @@ export default function Home() {
                         <Button 
                           onClick={handleFollowUpAnswer}
                           className="px-6 py-2.5 text-base font-medium text-white bg-[#4068ec] rounded-xl shadow-sm hover:bg-[#3255d0] focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:ring-offset-2 transition-all duration-300 flex items-center gap-2"
+                          disabled={isAiTyping || !currentAnswer.trim()}
                         >
-                          {currentQuestionIndex === followUpQuestions.length - 1 ? (
+                          {followUpAnswers.length === 2 ? (
                             <>
                               <Sparkles className="h-4 w-4" />
                               Find Colleges
