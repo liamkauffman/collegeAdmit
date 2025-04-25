@@ -105,11 +105,13 @@ export default function CollegePage() {
           type: collegeData.type,
           // Default hero image if none provided
           heroImage: collegeData.heroImage || "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-          location: {
-            city: collegeData.location?.city || collegeData.quality_of_life?.location?.nearest_city || "Unknown",
+          // Preserve the original location object with longitude/latitude if available
+          location: collegeData.location || {
+            city: collegeData.quality_of_life?.location?.nearest_city || "Unknown",
             state: collegeData.state || "Unknown",
             nearestCity: collegeData.quality_of_life?.location?.nearest_city
           },
+          state: collegeData.state,
           ranking: {
             usNews: collegeData.rankings?.us_news || "N/A"
           },
@@ -503,45 +505,51 @@ export default function CollegePage() {
   // Get college coordinates when college data loads
   useEffect(() => {
     const getCoordinates = async () => {
-      if (!college || !college.location) return;
+      if (!college) return;
       
       try {
-        // If backend provides latitude/longitude directly
-        if (college.location.latitude && college.location.longitude) {
+        // Check if the API has provided location coordinates directly
+        if (college.location && 
+            typeof college.location.longitude === 'number' && 
+            typeof college.location.latitude === 'number') {
+          console.log('Using provided coordinates:', college.location);
           setCollegeCoordinates({
-            lat: parseFloat(college.location.latitude),
-            lng: parseFloat(college.location.longitude)
+            lat: college.location.latitude,
+            lng: college.location.longitude
           });
           return;
         }
         
-        // Otherwise geocode from city and state
-        const response = await fetch(`/api/geocode?address=${encodeURIComponent(
-          `${college.name}, ${college.location.city}, ${college.location.state}`
-        )}`);
-        
-        if (!response.ok) {
-          throw new Error('Geocoding failed');
-        }
-        
-        const data = await response.json();
-        
-        if (data.coordinates) {
-          setCollegeCoordinates(data.coordinates);
+        // If we don't have coordinates but have city/state, try to geocode
+        const cityState = (college.location?.city || college.city) && (college.location?.state || college.state);
+        if (cityState) {
+          console.log('No coordinates provided, attempting to geocode from city/state');
+          // Geocode from city and state
+          const response = await fetch(`/api/geocode?address=${encodeURIComponent(
+            `${college.name}, ${college.location?.city || college.city}, ${college.location?.state || college.state}`
+          )}`);
+          
+          if (!response.ok) {
+            console.error('Geocoding request failed');
+            setCollegeCoordinates(null);
+            return;
+          }
+          
+          const data = await response.json();
+          
+          if (data.coordinates) {
+            setCollegeCoordinates(data.coordinates);
+          } else {
+            console.log('No coordinates found for this college');
+            setCollegeCoordinates(null);
+          }
         } else {
-          // Fallback coordinates if needed (will be replaced by geocoded ones)
-          setCollegeCoordinates({
-            lat: 37.4275, // Default coordinates
-            lng: -122.1697 // (Stanford as an example)
-          });
+          console.log('No location data available for this college');
+          setCollegeCoordinates(null);
         }
       } catch (error) {
         console.error('Error getting coordinates:', error);
-        // Use approximate coordinates based on city/state as fallback
-        setCollegeCoordinates({
-          lat: 37.4275,
-          lng: -122.1697
-        });
+        setCollegeCoordinates(null);
       }
     };
     
@@ -555,7 +563,7 @@ export default function CollegePage() {
     // Initialize the map
     const mapOptions = {
       center: collegeCoordinates,
-      zoom: 16,
+      zoom: 14, // Use a slightly lower zoom level for better context
       mapId: 'DEMO_MAP_ID', // Replace with your Map ID for styled maps
       mapTypeControl: true,
       streetViewControl: true,
@@ -580,7 +588,7 @@ export default function CollegePage() {
         <div style="padding: 10px; max-width: 200px;">
           <h3 style="margin: 0 0 10px 0; font-weight: bold;">${college.name}</h3>
           <p style="margin: 0 0 5px 0;">
-            ${college.location.city}, ${college.location.state}
+            ${college.location?.city || college.city}, ${college.location?.state || college.state}
           </p>
         </div>
       `
@@ -606,44 +614,61 @@ export default function CollegePage() {
         <div className="p-6">
           <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Campus Map</h2>
           
-          <div className="relative">
-            {/* Map container */}
-            <div 
-              ref={mapContainerRef} 
-              className="w-full h-[400px] rounded-lg overflow-hidden"
-              style={{ backgroundColor: '#f5f5f5' }}
-            />
-            
-            {!mapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-lg">
-                <div className="w-10 h-10 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin"></div>
+          {collegeCoordinates === null ? (
+            <div className="w-full h-[400px] rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+              <div className="text-center p-6">
+                <MapPin className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+                <h3 className="text-lg font-medium text-gray-700 mb-2">Map Unavailable</h3>
+                <p className="text-gray-500 max-w-md">
+                  We couldn't locate the exact coordinates for this campus. 
+                  Please check the college's official website for campus map information.
+                </p>
               </div>
-            )}
-            
-            {/* Map controls */}
-            <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
-              <motion.button
-                className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100"
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => {
-                  if (mapRef.current) {
-                    mapRef.current.setMapTypeId(
-                      mapRef.current.getMapTypeId() === 'satellite' 
-                        ? 'roadmap' 
-                        : 'satellite'
-                    );
-                  }
-                }}
-              >
-                <ExternalLink className="w-5 h-5 text-gray-700" />
-              </motion.button>
             </div>
-          </div>
+          ) : (
+            <div className="relative">
+              {/* Map container */}
+              <div 
+                ref={mapContainerRef} 
+                className="w-full h-[400px] rounded-lg overflow-hidden"
+                style={{ backgroundColor: '#f5f5f5' }}
+              />
+              
+              {!mapLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-lg">
+                  <div className="w-10 h-10 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+              
+              {/* Map controls */}
+              <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
+                <motion.button
+                  className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => {
+                    if (mapRef.current) {
+                      mapRef.current.setMapTypeId(
+                        mapRef.current.getMapTypeId() === 'satellite' 
+                          ? 'roadmap' 
+                          : 'satellite'
+                      );
+                    }
+                  }}
+                >
+                  <ExternalLink className="w-5 h-5 text-gray-700" />
+                </motion.button>
+              </div>
+            </div>
+          )}
           
           <div className="mt-4 text-sm text-gray-500 flex items-center">
             <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-            <p>Explore the {college.name} campus. Zoom in and out to view buildings and landmarks.</p>
+            {collegeCoordinates === null ? (
+              <p>Campus location information is not available at this time.</p>
+            ) : (
+              <p>Explore the {college.name} campus. Zoom in and out to view buildings and landmarks.</p>
+            )}
           </div>
         </div>
       </div>
