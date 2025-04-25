@@ -44,6 +44,10 @@ export default function NavigationBar() {
   const { data: session, status } = useSession()
   const isAuthenticated = status === "authenticated"
 
+  const handleNavClick = (item) => {
+    router.push(item.href)
+  }
+
   return (
     <div className="border-b border-[#BED8D4] dark:border-gray-700 bg-[#F7F9F9] dark:bg-gray-900 shadow-sm">
       <div className="flex h-16 items-center px-0 max-w-full w-full">
@@ -59,9 +63,9 @@ export default function NavigationBar() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8 ml-10 mx-6">
           {navItems.map((item) => (
-            <Link
+            <button
               key={item.href}
-              href={item.href}
+              onClick={() => handleNavClick(item)}
               className={cn(
                 "text-sm font-medium transition-colors flex items-center",
                 pathname === item.href
@@ -71,7 +75,7 @@ export default function NavigationBar() {
             >
               {item.icon}
               {item.name}
-            </Link>
+            </button>
           ))}
         </nav>
         
@@ -95,10 +99,10 @@ export default function NavigationBar() {
                 <div className="space-y-4">
                   {navItems.map((item) => (
                     <SheetClose asChild key={item.href}>
-                      <Link 
-                        href={item.href}
+                      <button
+                        onClick={() => handleNavClick(item)}
                         className={cn(
-                          "flex items-center p-2",
+                          "flex items-center p-2 w-full text-left",
                           pathname === item.href 
                             ? "text-gray-900 dark:text-white font-medium" 
                             : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -106,7 +110,7 @@ export default function NavigationBar() {
                       >
                         {item.icon}
                         {item.name}
-                      </Link>
+                      </button>
                     </SheetClose>
                   ))}
                 </div>

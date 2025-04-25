@@ -50,10 +50,7 @@ export default function SignIn() {
             Sign in to your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-900">
-            Or{' '}
-            <Link href="/auth/signup" className="font-medium text-gray-900 hover:text-gray-700">
-              create a new account
-            </Link>
+            Access your personalized college admission tools
           </p>
         </div>
         
@@ -134,6 +131,16 @@ export default function SignIn() {
               </button>
             </div>
           </form>
+          
+          <div className="mt-4 text-center">
+            <p className="mb-2 text-sm text-gray-500">Don't have an account?</p>
+            <Link 
+              href="/auth/signup" 
+              className="w-full inline-block py-2 px-3 border border-gray-300 rounded-md text-sm font-medium text-gray-900 bg-white hover:bg-gray-50 transition-colors"
+            >
+              Create a new account
+            </Link>
+          </div>
         </div>
         
         <div className="text-center">

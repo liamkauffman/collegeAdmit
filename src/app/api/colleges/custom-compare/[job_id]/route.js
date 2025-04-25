@@ -4,34 +4,61 @@ import axios from 'axios';
  * Custom College Comparison Status Check API Route
  * This route handles checking the status of a college comparison job
  */
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   console.log('Checking college comparison job status');
   try {
     // Get the job ID from the route params
-    const { job_id } = params;
-    if (!job_id) {
+    // Use the context parameter to access params safely
+    const jobId = context.params.job_id;
+    
+    if (!jobId) {
       return new Response(JSON.stringify({ error: 'Job ID is required' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       });
     }
     
-    console.log(`Checking status for job ID: ${job_id}`);
+    console.log(`Checking status for job ID: ${jobId}`);
     
     // Get the API URL from environment variable or use a default
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     
     // Build the API URL
-    const apiUrl = `${API_URL}/api/colleges/custom-compare/${job_id}`;
+    const apiUrl = `${API_URL}/api/colleges/custom-compare/${jobId}`;
     console.log(`Making request to backend API: ${apiUrl}`);
     
-    // Make a request to the FastAPI backend using axios
-    const response = await axios.get(apiUrl, {
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      timeout: 10000 // 10 second timeout for status checks
-    });
+    // Implement retry logic for resilience
+    let retries = 0;
+    const maxRetries = 3;
+    let response;
+    
+    while (retries <= maxRetries) {
+      try {
+        // Make a request to the FastAPI backend using axios
+        response = await axios.get(apiUrl, {
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000, // 30 second timeout
+        });
+        
+        // If successful, break out of retry loop
+        break;
+      } catch (retryError) {
+        retries++;
+        console.log(`Attempt ${retries} failed with error:`, retryError.message);
+        
+        // If we've reached max retries, throw the error to be caught by outer catch
+        if (retries > maxRetries) {
+          throw retryError;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        const delay = retries * 1000; // 1s, 2s, 3s
+        console.log(`Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
     
     console.log('Response status:', response.status);
     console.log('Job status:', response.data.status || 'unknown');

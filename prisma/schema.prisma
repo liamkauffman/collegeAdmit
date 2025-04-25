@@ -33,6 +33,7 @@ model User {
   preferences   UserPreferences?
   resume        Resume?
   favorites     UserFavorites[]
+  comparisons   CollegeComparison[]
 }
 
 enum UserRole {
@@ -272,4 +273,19 @@ model UserFavorites {
   @@unique([userId, collegeId])
   @@index([userId])
   @@index([collegeId])
+}
+
+// College comparison history
+model CollegeComparison {
+  id              String    @id @default(cuid())
+  userId          String
+  name            String    // User-provided name or auto-generated name for the comparison
+  colleges        String[]  // Array of college IDs that were compared
+  categories      Json      // Categories and weights used for the comparison
+  results         Json      // Saved comparison results
+  createdAt       DateTime  @default(now())
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
 }
