@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, MessageCircle, X, Star, LightbulbIcon, Loader2, BookOpen, GraduationCap } from "lucide-react"
+import { Send, MessageCircle, X, Star, LightbulbIcon, Loader2, BookOpen, GraduationCap, MapPin, ExternalLink } from "lucide-react"
 import { API_URL } from "@/config"
 import NavigationBar from '@/components/navigation-bar'
 import { mockCollegeDetails } from '@/lib/mock-college-details'
@@ -15,6 +15,7 @@ import { fetchCollegeDetails } from '@/lib/api'
 import { useSession } from "next-auth/react"
 import ReactMarkdown from 'react-markdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import Script from "next/script"
 
 // Simple function to format text with basic markdown
 const formatMarkdown = (text) => {
@@ -62,6 +63,10 @@ export default function CollegePage() {
     satScore: '',
     actScore: ''
   })
+  const [collegeCoordinates, setCollegeCoordinates] = useState(null)
+  const [mapLoaded, setMapLoaded] = useState(false)
+  const mapRef = useRef(null)
+  const mapContainerRef = useRef(null)
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -495,6 +500,156 @@ export default function CollegePage() {
     fetchUserMetrics();
   }, [session]);
 
+  // Get college coordinates when college data loads
+  useEffect(() => {
+    const getCoordinates = async () => {
+      if (!college || !college.location) return;
+      
+      try {
+        // If backend provides latitude/longitude directly
+        if (college.location.latitude && college.location.longitude) {
+          setCollegeCoordinates({
+            lat: parseFloat(college.location.latitude),
+            lng: parseFloat(college.location.longitude)
+          });
+          return;
+        }
+        
+        // Otherwise geocode from city and state
+        const response = await fetch(`/api/geocode?address=${encodeURIComponent(
+          `${college.name}, ${college.location.city}, ${college.location.state}`
+        )}`);
+        
+        if (!response.ok) {
+          throw new Error('Geocoding failed');
+        }
+        
+        const data = await response.json();
+        
+        if (data.coordinates) {
+          setCollegeCoordinates(data.coordinates);
+        } else {
+          // Fallback coordinates if needed (will be replaced by geocoded ones)
+          setCollegeCoordinates({
+            lat: 37.4275, // Default coordinates
+            lng: -122.1697 // (Stanford as an example)
+          });
+        }
+      } catch (error) {
+        console.error('Error getting coordinates:', error);
+        // Use approximate coordinates based on city/state as fallback
+        setCollegeCoordinates({
+          lat: 37.4275,
+          lng: -122.1697
+        });
+      }
+    };
+    
+    getCoordinates();
+  }, [college]);
+
+  // Google Maps initialization
+  const initMap = useCallback(() => {
+    if (!collegeCoordinates || !mapContainerRef.current || mapRef.current) return;
+    
+    // Initialize the map
+    const mapOptions = {
+      center: collegeCoordinates,
+      zoom: 16,
+      mapId: 'DEMO_MAP_ID', // Replace with your Map ID for styled maps
+      mapTypeControl: true,
+      streetViewControl: true,
+      fullscreenControl: true,
+      zoomControl: true
+    };
+    
+    const map = new google.maps.Map(mapContainerRef.current, mapOptions);
+    mapRef.current = map;
+    
+    // Add a marker for the college
+    const marker = new google.maps.Marker({
+      position: collegeCoordinates,
+      map: map,
+      title: college.name,
+      animation: google.maps.Animation.DROP
+    });
+    
+    // Add an info window
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="padding: 10px; max-width: 200px;">
+          <h3 style="margin: 0 0 10px 0; font-weight: bold;">${college.name}</h3>
+          <p style="margin: 0 0 5px 0;">
+            ${college.location.city}, ${college.location.state}
+          </p>
+        </div>
+      `
+    });
+    
+    // Open info window when marker is clicked
+    marker.addListener('click', () => {
+      infoWindow.open(map, marker);
+    });
+    
+    setMapLoaded(true);
+  }, [college, collegeCoordinates]);
+
+  // Initialize map when Google Maps API loads
+  const handleGoogleMapsLoaded = useCallback(() => {
+    initMap();
+  }, [initMap]);
+
+  // College map section renderer
+  const renderCollegeMap = () => {
+    return (
+      <div ref={el => sectionsRef.current['campus-map'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Campus Map</h2>
+          
+          <div className="relative">
+            {/* Map container */}
+            <div 
+              ref={mapContainerRef} 
+              className="w-full h-[400px] rounded-lg overflow-hidden"
+              style={{ backgroundColor: '#f5f5f5' }}
+            />
+            
+            {!mapLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-lg">
+                <div className="w-10 h-10 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+            
+            {/* Map controls */}
+            <div className="absolute bottom-4 right-4 flex flex-col space-y-2">
+              <motion.button
+                className="p-2 bg-white rounded-full shadow-md hover:bg-gray-100"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => {
+                  if (mapRef.current) {
+                    mapRef.current.setMapTypeId(
+                      mapRef.current.getMapTypeId() === 'satellite' 
+                        ? 'roadmap' 
+                        : 'satellite'
+                    );
+                  }
+                }}
+              >
+                <ExternalLink className="w-5 h-5 text-gray-700" />
+              </motion.button>
+            </div>
+          </div>
+          
+          <div className="mt-4 text-sm text-gray-500 flex items-center">
+            <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+            <p>Explore the {college.name} campus. Zoom in and out to view buildings and landmarks.</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -569,6 +724,7 @@ export default function CollegePage() {
 
   const sections = [
     { id: 'quick-facts', label: 'Quick Facts' },
+    { id: 'campus-map', label: 'Campus Map' },
     { id: 'majors', label: 'Majors' },
     { id: 'acceptance', label: 'Acceptance' },
     { id: 'quality-of-life', label: 'Quality of Life' },
@@ -578,6 +734,10 @@ export default function CollegePage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
+      <Script
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=Function.prototype`}
+        onLoad={handleGoogleMapsLoaded}
+      />
       <NavigationBar />
       
       {/* Hero Section with Parallax Effect */}
@@ -698,6 +858,9 @@ export default function CollegePage() {
             </div>
           </div>
         </div>
+        
+        {/* Add the Campus Map section */}
+        {renderCollegeMap()}
         
         <div ref={el => sectionsRef.current['majors'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
@@ -826,7 +989,7 @@ export default function CollegePage() {
                   <div className="text-3xl font-bold text-gray-800">{college.acceptance.internationalStudents}</div>
                   <div className="ml-4 flex items-center">
                     <span className="text-sm text-gray-600">
-                      {college.acceptance.internationalStudents === "N/A" ? "Not Available" : "%"}
+                      {college.acceptance.internationalStudents === "N/A" ? "Not Available" : ""}
                     </span>
                   </div>
                 </div>
