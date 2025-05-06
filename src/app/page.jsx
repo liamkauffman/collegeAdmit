@@ -771,10 +771,30 @@ export default function Home() {
       
       const data = await response.json();
       
-      // Clean up search summary if needed to remove any markdown formatting
+      // Clean up search summary for better readability and remove markdown formatting
       if (data.search_summary) {
-        // Remove any markdown-style bold markers
-        data.search_summary = data.search_summary.replace(/\*\*/g, '');
+        // Remove any markdown formatting and clean up the text
+        let cleanSummary = data.search_summary;
+        
+        // Remove all markdown bold markers
+        cleanSummary = cleanSummary.replace(/\*\*/g, '');
+        
+        // Replace bullet points with proper formatting
+        cleanSummary = cleanSummary.replace(/^\s*\*\s+/gm, '• ');
+        
+        // Replace markdown italics
+        cleanSummary = cleanSummary.replace(/\*([^*]+)\*/g, '$1');
+        
+        // Add proper spacing after periods that are followed by a new line
+        cleanSummary = cleanSummary.replace(/\.\n/g, '. \n');
+        
+        // Replace multiple newlines with double newlines for paragraph separation
+        cleanSummary = cleanSummary.replace(/\n{3,}/g, '\n\n');
+        
+        // Cleanup any remaining formatting issues
+        cleanSummary = cleanSummary.replace(/\_\_/g, '');
+        
+        data.search_summary = cleanSummary;
       }
       
       // Determine response type based on the content and behavior

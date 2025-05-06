@@ -20,10 +20,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Settings, Edit, Trash, FileEdit } from "lucide-react";
+import { 
+  Plus, 
+  MoreHorizontal, 
+  Settings, 
+  Edit, 
+  Trash, 
+  FileEdit, 
+  GraduationCap,
+  MapPin,
+  Building,
+  Percent,
+  DollarSign
+} from "lucide-react";
 import { AddEditCollegeDialog } from "./add-edit-college-dialog";
 import { DetailedTrackingDialog } from "./detailed-tracking-dialog";
 import { ColumnsDialog } from "./columns-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Status color mappings
 const statusColors = {
@@ -67,6 +80,7 @@ const decisionColors = {
 // Default visible columns
 const defaultVisibleColumns = [
   "collegeName",
+  "collegeDetails",
   "supplements",
   "deadline",
   "applicationType",
@@ -196,6 +210,19 @@ export function CollegeTracker() {
     return `${completed} of ${supplements.length} complete`;
   };
 
+  // Format acceptance rate for display
+  const formatAcceptanceRate = (rate) => {
+    if (rate === undefined || rate === null) return null;
+    // Convert decimal to percentage
+    return `${(rate * 100).toFixed(0)}%`;
+  };
+
+  // Format tuition for display
+  const formatTuition = (tuition) => {
+    if (tuition === undefined || tuition === null) return null;
+    return `$${tuition.toLocaleString()}`;
+  };
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
       <div className="p-4 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
@@ -226,6 +253,9 @@ export function CollegeTracker() {
               {visibleColumns.includes("collegeName") && (
                 <TableHead className="min-w-[200px]">College Name</TableHead>
               )}
+              {visibleColumns.includes("collegeDetails") && (
+                <TableHead className="min-w-[200px]">College Details</TableHead>
+              )}
               {visibleColumns.includes("supplements") && (
                 <TableHead className="min-w-[150px]">Supplements</TableHead>
               )}
@@ -255,6 +285,73 @@ export function CollegeTracker() {
                 <TableRow key={college.id}>
                   {visibleColumns.includes("collegeName") && (
                     <TableCell className="font-medium">{college.collegeName}</TableCell>
+                  )}
+                  {visibleColumns.includes("collegeDetails") && (
+                    <TableCell>
+                      {(college.state || college.type || college.acceptance_rate || college.tuition) ? (
+                        <div className="flex flex-wrap gap-2">
+                          <TooltipProvider>
+                            {college.state && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {college.state}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>State/Location</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {college.type && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <Building className="h-3 w-3" />
+                                    {college.type}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Institution Type</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {college.acceptance_rate && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <Percent className="h-3 w-3" />
+                                    {formatAcceptanceRate(college.acceptance_rate)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Acceptance Rate</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            
+                            {college.tuition && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className="flex items-center gap-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    {formatTuition(college.tuition)}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Tuition</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </TooltipProvider>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No details available</span>
+                      )}
+                    </TableCell>
                   )}
                   {visibleColumns.includes("supplements") && (
                     <TableCell>
@@ -346,6 +443,7 @@ export function CollegeTracker() {
               <TableRow>
                 <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center">
+                    <GraduationCap className="h-8 w-8 text-gray-300 mb-2" />
                     <p className="text-gray-500 dark:text-gray-400">
                       No colleges added yet
                     </p>

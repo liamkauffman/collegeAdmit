@@ -17,6 +17,7 @@ import { Check, RotateCcw } from "lucide-react";
 // All available columns with labels
 const availableColumns = [
   { id: "collegeName", label: "College Name" },
+  { id: "collegeDetails", label: "College Details" },
   { id: "supplements", label: "Supplements" },
   { id: "deadline", label: "Application Deadline" },
   { id: "applicationType", label: "Application Type" },
@@ -29,6 +30,7 @@ const availableColumns = [
 // Default visible columns
 const defaultColumns = [
   "collegeName",
+  "collegeDetails",
   "supplements",
   "deadline",
   "applicationType",
@@ -78,7 +80,7 @@ export function ColumnsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle>Customize Visible Columns</DialogTitle>
           <DialogDescription>
@@ -115,16 +117,16 @@ export function ColumnsDialog({
           </div>
         </div>
         
-        <DialogFooter className="flex justify-between">
-          <Button type="button" variant="outline" onClick={handleReset} className="mr-auto">
+        <DialogFooter className="flex-col gap-3 sm:flex-row sm:justify-between sm:items-center pt-4">
+          <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto">
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset to Default
           </Button>
-          <div>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="mr-2">
+          <div className="flex gap-3 w-full sm:w-auto justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="button" onClick={handleSave}>
+            <Button type="button" onClick={handleSave} className="w-full sm:w-auto">
               <Check className="h-4 w-4 mr-2" />
               Save Changes
             </Button>
