@@ -790,7 +790,7 @@ export default function Home() {
       else if (data.recommendations && data.recommendations.length > 0) {
         inferredResponseType = "new_search";
         
-        // If this is a new search and we have recommendations, update the displayed recommendations
+        // If this is a new search and we have recommendations, update the main displayed recommendations
         if (isNewSearch) {
           // Reset used images before setting new recommendations
           resetUsedImages();
@@ -806,7 +806,7 @@ export default function Home() {
         type: 'assistant',
         content: data.search_summary,
         responseType: inferredResponseType,
-        // Store any new recommendations in the conversation message itself
+        // Always include any new recommendations in the conversation message
         includedRecommendations: data.recommendations || []
       };
       

@@ -6,7 +6,7 @@ import { MapPin, Sparkles, Star } from "lucide-react";
 import { getCollegeImage, resetUsedImages } from '@/utils/college-images';
 import { useSession } from "next-auth/react";
 
-export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavorited = false, preserveState = false }) {
+export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavorited = false, preserveState = false, compact = false }) {
   const router = useRouter();
   const { data: session } = useSession();
   const [showDetails, setShowDetails] = useState(false);
@@ -55,6 +55,11 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
     // Handle new cost data structure from the backend
     if (cost.amount) {
       return `$${Math.round(cost.amount).toLocaleString()}`;
+    }
+    
+    // Handle estimated_total (often used in API responses)
+    if (cost.estimated_total) {
+      return `$${Math.round(cost.estimated_total).toLocaleString()}`;
     }
     
     // Handle legacy cost data structures as fallback
@@ -239,17 +244,83 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
   const cardStyle = {
     position: 'relative',
     boxShadow: `0 0 1px rgba(0, 0, 0, 0.1), 
-                8px 8px 0 ${getShadowColor()}`,
+                ${compact ? '4px 4px 0' : '8px 8px 0'} ${getShadowColor()}`,
     transform: 'translateZ(0)',
     transition: 'transform 0.3s, box-shadow 0.3s',
   };
 
   const cardHoverStyle = {
-    transform: 'translateY(-4px) translateZ(0)',
+    transform: `translateY(${compact ? '-2px' : '-4px'}) translateZ(0)`,
     boxShadow: `0 0 1px rgba(0, 0, 0, 0.1), 
-                10px 10px 0 ${getShadowColor()}`,
+                ${compact ? '5px 5px 0' : '10px 10px 0'} ${getShadowColor()}`,
   };
 
+  // For compact mode, render a simplified version of the card
+  if (compact) {
+    return (
+      <div 
+        className="group relative flex flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 cursor-pointer"
+        onClick={handleCardClick}
+        style={cardStyle}
+        onMouseEnter={(e) => {
+          Object.assign(e.currentTarget.style, cardHoverStyle);
+        }}
+        onMouseLeave={(e) => {
+          Object.assign(e.currentTarget.style, cardStyle);
+        }}
+      >
+        <div className="flex overflow-hidden">
+          {/* Left side: Image */}
+          <div className="relative h-24 w-24 min-w-[6rem] overflow-hidden">
+            {showImageLoadingSkeleton ? (
+              <div className="h-full w-full bg-gray-200 animate-pulse flex items-center justify-center">
+                <span className="text-gray-400 text-xs">Loading...</span>
+              </div>
+            ) : (
+              <img 
+                src={collegeImageUrl}
+                alt={`${college.name} campus`}
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                onError={handleImageError}
+              />
+            )}
+          </div>
+          
+          {/* Right side: College info */}
+          <div className="flex-1 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className={`${getBgColor()} px-2 py-0.5 rounded-full text-xs font-medium text-white shadow-sm`}>
+                {getTypeLabel()}
+              </span>
+            </div>
+            
+            <h3 className="font-bold text-gray-900 line-clamp-1 mb-1">{college.name}</h3>
+            
+            <div className="flex items-center text-gray-600 text-xs mb-1">
+              <MapPin className="h-3 w-3 mr-1 text-gray-400" />
+              <span>{college.state} • {college.type}</span>
+            </div>
+            
+            <div className="flex items-center gap-3 text-xs">
+              <div className="flex items-center">
+                <span className="font-medium text-gray-700">Acceptance:</span>
+                <span className="ml-1 font-bold text-gray-900">{formatAcceptanceRate(college.acceptance_rate)}</span>
+              </div>
+              
+              {formatCost(college.cost) && (
+                <div className="flex items-center">
+                  <span className="font-medium text-gray-700">Cost:</span>
+                  <span className="ml-1 font-bold text-gray-900">{formatCost(college.cost)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard card
   return (
     <div 
       className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 cursor-pointer"

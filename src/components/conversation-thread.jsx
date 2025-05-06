@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Bot, User, Search, ArrowRight, Info, RefreshCw, School, GraduationCap } from 'lucide-react';
+import { CollegeCard } from "@/components/college-card";
 
-export function ConversationMessage({ message, type, responseType }) {
+export function ConversationMessage({ message, type, responseType, includedRecommendations = [] }) {
   return (
-    <div className={`flex ${type === 'user' ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex flex-col ${type === 'user' ? 'justify-end items-end' : 'justify-start items-start'}`}>
       <div className={`max-w-[90%] p-4 rounded-2xl ${
         type === 'user' 
           ? 'bg-blue-600 text-white rounded-tr-none shadow-md' 
@@ -11,6 +12,26 @@ export function ConversationMessage({ message, type, responseType }) {
       }`}>
         <p className="whitespace-pre-line">{message}</p>
       </div>
+      
+      {/* Display college recommendations if they exist in this message */}
+      {type === 'assistant' && includedRecommendations && includedRecommendations.length > 0 && (
+        <div className="mt-4 w-full">
+          <div className="grid grid-cols-1 gap-4">
+            {includedRecommendations.map((college) => (
+              <div key={college.id} className="transform hover:scale-[1.01] transition-all duration-300">
+                <div className="shadow-md rounded-xl overflow-hidden">
+                  <CollegeCard 
+                    college={college} 
+                    type={college.category}
+                    preserveState={true}
+                    compact={true}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,7 +169,7 @@ export function ConversationThread({
     <div className="w-full max-w-3xl mx-auto mt-8 animate-fade-in">
       {/* Previous messages */}
       {messages.length > 0 && (
-        <div className="space-y-5 mb-8 overflow-y-auto max-h-[600px] pr-2 pb-2">
+        <div className="space-y-5 mb-8 pr-2 pb-2">
           {messages.map((msg, idx) => (
             <div key={idx} className="animate-slide-in-bottom" style={{ 
               animationDelay: `${idx * 100}ms` 
@@ -157,6 +178,7 @@ export function ConversationThread({
                 message={msg.content} 
                 type={msg.type} 
                 responseType={msg.responseType}
+                includedRecommendations={msg.includedRecommendations}
               />
             </div>
           ))}

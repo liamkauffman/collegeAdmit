@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { tailwindColors } from "@/lib/theme"
-import { User, LogOut, Menu, Settings, Search, Building2 } from "lucide-react"
+import { User, LogOut, Menu, Settings, Search, Building2, ClipboardList } from "lucide-react"
 import { SvgLogo } from "@/components/icons/SvgLogo"
 import { useSession, signOut } from "next-auth/react"
 import {
@@ -35,6 +35,11 @@ const navItems = [
     name: "Compare Colleges",
     href: "/compare",
     icon: <Building2 className="h-4 w-4 mr-2" />
+  },
+  {
+    name: "College List",
+    href: "/college-list",
+    icon: <ClipboardList className="h-4 w-4 mr-2" />
   },
 ]
 
