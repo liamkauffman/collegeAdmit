@@ -32,8 +32,7 @@ export async function GET(request, context) {
         headers: {
           'Accept': 'application/json'
         },
-        // Set a reasonable timeout
-        timeout: 15000
+        timeout: 60000
       });
       
       console.log(`Backend response status: ${axiosResponse.status}`);

@@ -67,6 +67,11 @@ export default function CollegePage() {
   const [mapLoaded, setMapLoaded] = useState(false)
   const mapRef = useRef(null)
   const mapContainerRef = useRef(null)
+  // Add a state to track Google Maps API status
+  const [mapsApiStatus, setMapsApiStatus] = useState({
+    loaded: false,
+    error: null
+  });
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -84,9 +89,6 @@ export default function CollegePage() {
     
     const getCollegeDetails = async () => {
       try {
-        // Check if this is a test request (via URL parameter)
-        const isTestMode = new URLSearchParams(window.location.search).get('test') === 'true';
-        
         // Add additional error handling and timeout to the fetch operation
         let fetchPromise = fetchCollegeDetails(collegeId);
         
@@ -209,13 +211,6 @@ export default function CollegePage() {
         console.error("Error fetching college details:", error);
         setError(`Failed to load college details: ${error.message}`);
         
-        // Fallback to mock data in development environment, but not in test mode
-        if (process.env.NODE_ENV === 'development' && !isTestMode) {
-          console.log("Falling back to mock data in development mode");
-          const fallbackData = mockCollegeDetails[collegeId] || mockCollegeDetails.stanford;
-          setCollege(fallbackData);
-          setError(null);
-        }
       } finally {
         setLoading(false);
       }
@@ -508,15 +503,21 @@ export default function CollegePage() {
       if (!college) return;
       
       try {
+        console.log('College location data:', college.location);
+        
         // Check if the API has provided location coordinates directly
         if (college.location && 
-            typeof college.location.longitude === 'number' && 
-            typeof college.location.latitude === 'number') {
-          console.log('Using provided coordinates:', college.location);
-          setCollegeCoordinates({
-            lat: college.location.latitude,
-            lng: college.location.longitude
-          });
+            college.location.longitude !== undefined && 
+            college.location.latitude !== undefined) {
+          
+          // Create coordinates object with proper type conversion if needed
+          const coordinates = {
+            lat: Number(college.location.latitude),
+            lng: Number(college.location.longitude)
+          };
+          
+          console.log('Using provided coordinates:', coordinates);
+          setCollegeCoordinates(coordinates);
           return;
         }
         
@@ -538,6 +539,7 @@ export default function CollegePage() {
           const data = await response.json();
           
           if (data.coordinates) {
+            console.log('Geocoded coordinates:', data.coordinates);
             setCollegeCoordinates(data.coordinates);
           } else {
             console.log('No coordinates found for this college');
@@ -555,10 +557,26 @@ export default function CollegePage() {
     
     getCoordinates();
   }, [college]);
-
   // Google Maps initialization
   const initMap = useCallback(() => {
-    if (!collegeCoordinates || !mapContainerRef.current || mapRef.current) return;
+    console.log('Initializing Google Map with coordinates:', collegeCoordinates);
+    if (!collegeCoordinates || !mapContainerRef.current) {
+      console.log('Map initialization conditions not met:', { 
+        collegeCoordinates, 
+        mapContainerRef: !!mapContainerRef.current
+      });
+      return;
+    }
+    
+    // Check if Google Maps API is available
+    if (typeof window === 'undefined' || typeof google === 'undefined' || !google.maps) {
+      console.error('Google Maps API not loaded properly');
+      setMapsApiStatus({
+        loaded: false,
+        error: 'Google Maps API not available'
+      });
+      return;
+    }
     
     // Initialize the map
     const mapOptions = {
@@ -570,57 +588,122 @@ export default function CollegePage() {
       fullscreenControl: true,
       zoomControl: true
     };
+    console.log('Map options:', mapOptions);
     
-    const map = new google.maps.Map(mapContainerRef.current, mapOptions);
-    mapRef.current = map;
-    
-    // Add a marker for the college
-    const marker = new google.maps.Marker({
-      position: collegeCoordinates,
-      map: map,
-      title: college.name,
-      animation: google.maps.Animation.DROP
-    });
-    
-    // Add an info window
-    const infoWindow = new google.maps.InfoWindow({
-      content: `
-        <div style="padding: 10px; max-width: 200px;">
-          <h3 style="margin: 0 0 10px 0; font-weight: bold;">${college.name}</h3>
-          <p style="margin: 0 0 5px 0;">
-            ${college.location?.city || college.city}, ${college.location?.state || college.state}
-          </p>
-        </div>
-      `
-    });
-    
-    // Open info window when marker is clicked
-    marker.addListener('click', () => {
-      infoWindow.open(map, marker);
-    });
-    
-    setMapLoaded(true);
+    try {
+      // Clear previous map instance if it exists
+      if (mapRef.current) {
+        mapRef.current = null;
+      }
+      
+      const map = new google.maps.Map(mapContainerRef.current, mapOptions);
+      mapRef.current = map;
+      console.log('Map created successfully');
+      
+      console.log('Marker added at position:', collegeCoordinates);
+      
+      // Add an info window
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+          <div style="padding: 10px; max-width: 200px;">
+            <h3 style="margin: 0 0 10px 0; font-weight: bold;">${college.name}</h3>
+            <p style="margin: 0 0 5px 0;">
+              ${college.location?.city || college.city}, ${college.location?.state || college.state}
+            </p>
+          </div>
+        `
+      });
+      
+      // // Open info window when marker is clicked
+      // marker.addListener('click', () => {
+      //   infoWindow.open(map, marker);
+      // });
+      
+      // Listen for map load completion
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        console.log('Map fully loaded and rendered');
+        setMapLoaded(true);
+      });
+      
+      setMapsApiStatus({
+        loaded: true,
+        error: null
+      });
+    } catch (error) {
+      console.error('Error creating Google map:', error);
+      setMapsApiStatus({
+        loaded: false,
+        error: error.message
+      });
+    }
   }, [college, collegeCoordinates]);
 
-  // Initialize map when Google Maps API loads
+  // Handle Google Maps API loading
   const handleGoogleMapsLoaded = useCallback(() => {
-    initMap();
-  }, [initMap]);
+    console.log('Google Maps API loaded');
+    setMapsApiStatus(prev => ({...prev, loaded: true}));
+  }, []);
+
+  // Add error handling for Google Maps loading
+  const handleGoogleMapsError = useCallback((error) => {
+    console.error('Google Maps API failed to load:', error);
+    setMapsApiStatus({
+      loaded: false,
+      error: 'Failed to load Google Maps API'
+    });
+  }, []);
+
+  // Modify the useEffect to use the improved mapsApiStatus
+  useEffect(() => {
+    if (collegeCoordinates && mapContainerRef.current && !mapRef.current && typeof google !== 'undefined' && google.maps) {
+      console.log('Both coordinates and Google Maps API are available, initializing map');
+      // Small timeout to ensure DOM is fully ready
+      setTimeout(initMap, 100);
+    }
+  }, [collegeCoordinates, mapsApiStatus.loaded, initMap]);
 
   // College map section renderer
   const renderCollegeMap = () => {
+    // Function to check if there are Google Maps API errors
+    const hasGoogleMapsError = () => {
+      // Check if Google Maps API is not available
+      if (typeof google === 'undefined') return true;
+      
+      // Check if we have an explicit error from our mapsApiStatus
+      if (mapsApiStatus.error) return true;
+      
+      // Check for specific error elements that Google Maps API creates
+      const errorElements = document.querySelectorAll('.gm-err-container');
+      return errorElements.length > 0;
+    };
+
+    // Determine the appropriate error message
+    const getMapErrorMessage = () => {
+      if (collegeCoordinates === null) {
+        return "We couldn't locate the exact coordinates for this campus.";
+      }
+      
+      if (mapsApiStatus.error) {
+        return `There was an issue with the map: ${mapsApiStatus.error}`;
+      }
+      
+      return "There was an issue loading the map. Please check your Google Maps API key configuration.";
+    };
+
+
     return (
       <div ref={el => sectionsRef.current['campus-map'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
         <div className="p-6">
           <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Campus Map</h2>
           
-          {collegeCoordinates === null ? (
+          {collegeCoordinates === null || hasGoogleMapsError() ? (
             <div className="w-full h-[400px] rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
               <div className="text-center p-6">
                 <MapPin className="w-10 h-10 mx-auto mb-3 text-gray-400" />
                 <h3 className="text-lg font-medium text-gray-700 mb-2">Map Unavailable</h3>
                 <p className="text-gray-500 max-w-md">
-                  We couldn't locate the exact coordinates for this campus. 
+                  {getMapErrorMessage()}
+                  <br/>
                   Please check the college's official website for campus map information.
                 </p>
               </div>
@@ -630,13 +713,17 @@ export default function CollegePage() {
               {/* Map container */}
               <div 
                 ref={mapContainerRef} 
+                id="google-map-container"
                 className="w-full h-[400px] rounded-lg overflow-hidden"
                 style={{ backgroundColor: '#f5f5f5' }}
               />
               
               {!mapLoaded && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-lg">
-                  <div className="w-10 h-10 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin"></div>
+                  <div className="flex flex-col items-center">
+                    <div className="w-10 h-10 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin mb-2"></div>
+                    <p className="text-sm text-gray-600">Loading map...</p>
+                  </div>
                 </div>
               )}
               
@@ -664,7 +751,7 @@ export default function CollegePage() {
           
           <div className="mt-4 text-sm text-gray-500 flex items-center">
             <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-            {collegeCoordinates === null ? (
+            {collegeCoordinates === null || hasGoogleMapsError() ? (
               <p>Campus location information is not available at this time.</p>
             ) : (
               <p>Explore the {college.name} campus. Zoom in and out to view buildings and landmarks.</p>
@@ -674,6 +761,61 @@ export default function CollegePage() {
       </div>
     );
   };
+
+  // This effect will run once the Google Maps API is loaded
+  useEffect(() => {
+    const checkAndInitMap = () => {
+      // Check if we have all the necessary requirements to initialize the map
+      if (
+        collegeCoordinates && 
+        mapContainerRef.current && 
+        typeof google !== 'undefined' && 
+        google.maps && 
+        !mapRef.current
+      ) {
+        console.log('Google Maps API detected, initializing map with:', {
+          collegeCoordinates,
+          mapContainerRef: !!mapContainerRef.current,
+          googleMapsLoaded: typeof google !== 'undefined' && !!google.maps
+        });
+        
+        // Initialize the map
+        initMap();
+      } else {
+        console.log('Map initialization skipped, conditions not met:', {
+          collegeCoordinates: !!collegeCoordinates,
+          mapContainerRef: !!mapContainerRef.current,
+          googleMapsLoaded: typeof google !== 'undefined' && !!google.maps,
+          mapRefAlreadyExists: !!mapRef.current
+        });
+      }
+    };
+
+    // Check if Google Maps API is already loaded
+    if (typeof window !== 'undefined') {
+      if (typeof google !== 'undefined' && google.maps) {
+        console.log('Google Maps API already available');
+        checkAndInitMap();
+      } else {
+        console.log('Waiting for Google Maps API to load');
+        // Set up a MutationObserver to watch for script load
+        const observer = new MutationObserver((mutations) => {
+          if (typeof google !== 'undefined' && google.maps) {
+            console.log('Google Maps API detected by observer');
+            checkAndInitMap();
+            observer.disconnect();
+          }
+        });
+        
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // Clean up
+        return () => {
+          observer.disconnect();
+        };
+      }
+    }
+  }, [collegeCoordinates, initMap]);
 
   if (loading) {
     return (
@@ -760,8 +902,10 @@ export default function CollegePage() {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&callback=Function.prototype`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
         onLoad={handleGoogleMapsLoaded}
+        onError={handleGoogleMapsError}
+        strategy="lazyOnload"
       />
       <NavigationBar />
       
