@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, MessageCircle, X, Star, LightbulbIcon, Loader2, BookOpen, GraduationCap, MapPin, ExternalLink } from "lucide-react"
+import { Send, MessageCircle, X, Star, LightbulbIcon, Loader2, BookOpen, GraduationCap, MapPin, ExternalLink, Plane } from "lucide-react"
 import { API_URL } from "@/config"
 import NavigationBar from '@/components/navigation-bar'
 import { mockCollegeDetails } from '@/lib/mock-college-details'
@@ -72,6 +72,11 @@ export default function CollegePage() {
     loaded: false,
     error: null
   });
+  // Add state for nearest airports
+  const [nearbyAirports, setNearbyAirports] = useState([]);
+  const [airportsLoading, setAirportsLoading] = useState(false);
+  const [airportsError, setAirportsError] = useState(null);
+  const [airportRadius, setAirportRadius] = useState(50); // Default 50 mile radius
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -662,6 +667,39 @@ export default function CollegePage() {
     }
   }, [collegeCoordinates, mapsApiStatus.loaded, initMap]);
 
+  // Add useEffect to fetch nearby airports when college coordinates are available
+  useEffect(() => {
+    const fetchNearbyAirports = async () => {
+      if (!collegeCoordinates) return;
+      
+      setAirportsLoading(true);
+      setAirportsError(null);
+      
+      try {
+        const response = await fetch(`/api/airports?lat=${collegeCoordinates.lat}&lng=${collegeCoordinates.lng}&radius=${airportRadius * 1000}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch nearby airports');
+        }
+        
+        const data = await response.json();
+        setNearbyAirports(data.airports || []);
+      } catch (error) {
+        console.error('Error fetching nearby airports:', error);
+        setAirportsError(error.message);
+      } finally {
+        setAirportsLoading(false);
+      }
+    };
+    
+    // Add debounce for airportRadius changes to prevent excessive API calls
+    const timer = setTimeout(() => {
+      fetchNearbyAirports();
+    }, 500); // 500ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [collegeCoordinates, airportRadius]);
+
   // College map section renderer
   const renderCollegeMap = () => {
     // Function to check if there are Google Maps API errors
@@ -817,6 +855,157 @@ export default function CollegePage() {
     }
   }, [collegeCoordinates, initMap]);
 
+  // Add function to render the airports section
+  const renderAirportsSection = () => {
+    return (
+      <div ref={el => sectionsRef.current['nearby-airports'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold text-[#4068ec] mb-4">Nearby Airports</h2>
+          
+          <div className="mb-5">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="airport-radius" className="text-sm font-medium text-gray-700 flex items-center">
+                Search Radius: <span className="font-bold mx-1">{airportRadius} miles</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4 text-gray-400 ml-1">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 16v-4"></path>
+                        <path d="M12 8h.01"></path>
+                      </svg>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-xs">Distances are measured "as the crow flies" (direct line). Actual driving distances may be longer.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </label>
+              {airportRadius !== 50 && (
+                <button 
+                  onClick={() => setAirportRadius(50)}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Reset to Default
+                </button>
+              )}
+            </div>
+            <div className="flex items-center">
+              <span className="text-xs text-gray-500 mr-2">10mi</span>
+              <div className="relative flex-1 h-2">
+                <input 
+                  id="airport-radius"
+                  type="range" 
+                  min="10" 
+                  max="200" 
+                  value={airportRadius}
+                  onChange={(e) => setAirportRadius(parseInt(e.target.value))}
+                  className="absolute w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#4068ec] z-10" 
+                  style={{
+                    // Custom styling for webkit browsers
+                    WebkitAppearance: 'none',
+                    background: 'transparent'
+                  }}
+                />
+                {/* Custom track with filled portion */}
+                <div className="absolute w-full h-2 bg-gray-200 rounded-lg overflow-hidden">
+                  <div 
+                    className="h-full bg-[#4068ec]" 
+                    style={{ width: `${((airportRadius - 10) / 190) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 ml-2">200mi</span>
+            </div>
+          </div>
+          
+          {airportsLoading ? (
+            <div className="flex items-center justify-center p-6">
+              <div className="w-8 h-8 border-4 border-[#4068ec] border-t-transparent rounded-full animate-spin"></div>
+              <span className="ml-3 text-gray-600">Finding airports within {airportRadius} miles...</span>
+            </div>
+          ) : airportsError ? (
+            <div className="text-center p-6 bg-red-50 rounded-lg">
+              <Plane className="w-10 h-10 mx-auto mb-3 text-red-400" />
+              <h3 className="text-lg font-medium text-red-700 mb-2">Unable to Load Airports</h3>
+              <p className="text-red-600 max-w-md mx-auto">
+                We encountered an error while trying to find nearby airports: {airportsError}
+              </p>
+              <button 
+                onClick={() => {
+                  setAirportsError(null);
+                  if (collegeCoordinates) {
+                    setAirportsLoading(true);
+                    fetch(`/api/airports?lat=${collegeCoordinates.lat}&lng=${collegeCoordinates.lng}&radius=${airportRadius * 1000}`)
+                      .then(response => {
+                        if (!response.ok) throw new Error('Failed to fetch nearby airports');
+                        return response.json();
+                      })
+                      .then(data => {
+                        setNearbyAirports(data.airports || []);
+                        setAirportsLoading(false);
+                      })
+                      .catch(error => {
+                        console.error('Error fetching nearby airports:', error);
+                        setAirportsError(error.message);
+                        setAirportsLoading(false);
+                      });
+                  }
+                }}
+                className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors text-sm font-medium"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : nearbyAirports.length === 0 ? (
+            <div className="text-center p-6 bg-gray-50 rounded-lg">
+              <Plane className="w-10 h-10 mx-auto mb-3 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-700 mb-2">No Major Airports Found</h3>
+              <p className="text-gray-500 max-w-md mx-auto">
+                We couldn't find any major airports within {airportRadius} miles of {college.name}.
+                <br />
+                Try increasing the search radius to find airports further away.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {nearbyAirports.map((airport, index) => (
+                <div key={index} className="flex items-start p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="bg-blue-100 p-2 rounded-full mr-4">
+                    <Plane className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-800">{airport.name}</h3>
+                    <p className="text-sm text-gray-600">{airport.address}</p>
+                    <div className="mt-2 flex items-center">
+                      <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded-full">{airport.distance} miles away</span>
+                      {airport.iata && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{airport.iata}</span>
+                      )}
+                    </div>
+                  </div>
+                  <a 
+                    href={`https://www.google.com/maps/dir/?api=1&origin=${collegeCoordinates.lat},${collegeCoordinates.lng}&destination=${encodeURIComponent(airport.name)}&destination_place_id=${airport.place_id}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+                  >
+                    <span>Directions</span>
+                    <ExternalLink className="w-4 h-4 ml-1" />
+                  </a>
+                </div>
+              ))}
+              
+              <div className="text-sm text-gray-500 mt-4">
+                <p>Showing airports within {airportRadius} miles. Airport distances are approximate and travel times may vary based on traffic conditions.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -892,6 +1081,7 @@ export default function CollegePage() {
   const sections = [
     { id: 'quick-facts', label: 'Quick Facts' },
     { id: 'campus-map', label: 'Campus Map' },
+    { id: 'nearby-airports', label: 'Airports' },
     { id: 'majors', label: 'Majors' },
     { id: 'acceptance', label: 'Acceptance' },
     { id: 'quality-of-life', label: 'Quality of Life' },
@@ -980,12 +1170,13 @@ export default function CollegePage() {
               <button
                 key={section.id}
                 onClick={() => scrollToSection(section.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors flex items-center ${
                   activeSection === section.id
                     ? 'text-[#4068ec] border-b-2 border-[#4068ec]'
                     : 'text-gray-500 hover:text-[#4068ec]'
                 }`}
               >
+                {section.id === 'nearby-airports' && <Plane className="w-3 h-3 mr-1" />}
                 {section.label}
               </button>
             ))}
@@ -1030,6 +1221,9 @@ export default function CollegePage() {
         
         {/* Add the Campus Map section */}
         {renderCollegeMap()}
+        
+        {/* Add the Airports section */}
+        {renderAirportsSection()}
         
         <div ref={el => sectionsRef.current['majors'] = el} className="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-transform hover:scale-[1.01]">
           <div className="p-6">
