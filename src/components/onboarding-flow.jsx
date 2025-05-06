@@ -693,7 +693,7 @@ export function OnboardingFlow({ onComplete }) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-[800px] md:max-w-[1000px] p-0 bg-white dark:bg-gray-900 border-0 rounded-2xl overflow-hidden shadow-lg">
         <DialogTitle className="sr-only">
-          {showWelcome ? "Welcome to CollegeAdmit.AI" : onboardingQuestions[currentQuestionIndex].question}
+          {showWelcome ? "Welcome to CollegeCompass" : onboardingQuestions[currentQuestionIndex].question}
         </DialogTitle>
         <DialogDescription className="sr-only">
           {showWelcome ? "College admissions questionnaire" : onboardingQuestions[currentQuestionIndex].description}

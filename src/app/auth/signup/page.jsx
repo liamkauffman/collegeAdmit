@@ -100,7 +100,7 @@ export default function SignUp() {
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center mb-4">
               <SvgLogo />
-              <span className="text-2xl font-bold text-gray-900 dark:text-white ml-3">CollegeAdmit.AI</span>
+              <span className="text-2xl font-bold text-gray-900 dark:text-white ml-3">CollegeCompass</span>
             </div>
             <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
               Create your account

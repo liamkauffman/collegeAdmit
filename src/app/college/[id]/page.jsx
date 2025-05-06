@@ -16,6 +16,7 @@ import { useSession } from "next-auth/react"
 import ReactMarkdown from 'react-markdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import Script from "next/script"
+import { getCollegeImage, getCollegeImageAsync, resetUsedImages } from '@/utils/college-images'
 
 // Simple function to format text with basic markdown
 const formatMarkdown = (text) => {
@@ -52,7 +53,7 @@ export default function CollegePage() {
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(true)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('quick-facts')
   const messagesEndRef = useRef(null)
   const sectionsRef = useRef({})
@@ -67,6 +68,8 @@ export default function CollegePage() {
   const [mapLoaded, setMapLoaded] = useState(false)
   const mapRef = useRef(null)
   const mapContainerRef = useRef(null)
+  // Add state for image attribution
+  const [heroImageData, setHeroImageData] = useState(null)
   // Add a state to track Google Maps API status
   const [mapsApiStatus, setMapsApiStatus] = useState({
     loaded: false,
@@ -77,6 +80,11 @@ export default function CollegePage() {
   const [airportsLoading, setAirportsLoading] = useState(false);
   const [airportsError, setAirportsError] = useState(null);
   const [airportRadius, setAirportRadius] = useState(50); // Default 50 mile radius
+
+  // Reset used images when component mounts
+  useEffect(() => {
+    resetUsedImages();
+  }, []);
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -105,13 +113,31 @@ export default function CollegePage() {
         // Race the fetch against the timeout
         const collegeData = await Promise.race([fetchPromise, timeoutPromise]);
         
+        // Fetch image from Pexels API
+        let heroImage = collegeData.heroImage;
+        let imageData = null;
+        
+        if (!heroImage) {
+          try {
+            imageData = await getCollegeImageAsync(collegeData.id, collegeData.name);
+            if (imageData) {
+              heroImage = typeof imageData === 'string' ? imageData : imageData.url;
+              setHeroImageData(imageData);
+            }
+          } catch (err) {
+            console.error("Error getting Pexels image:", err);
+            // Fall back to default image if Pexels API fails
+            heroImage = "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80";
+          }
+        }
+        
         // Transform the API response to match expected format in UI
         const transformedData = {
           id: collegeData.id,
           name: collegeData.name,
           type: collegeData.type,
-          // Default hero image if none provided
-          heroImage: collegeData.heroImage || "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
+          // Use image from Pexels or fallback to default
+          heroImage: heroImage || "https://images.unsplash.com/photo-1498243691581-b145c3f54a5a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
           // Preserve the original location object with longitude/latitude if available
           location: collegeData.location || {
             city: collegeData.quality_of_life?.location?.nearest_city || "Unknown",
@@ -230,7 +256,7 @@ export default function CollegePage() {
       setMessages([
         {
           role: 'assistant',
-          content: `Welcome! I'm the ${college.name} AI assistant. You can ask me anything about admissions, campus life, majors, costs, or student outcomes.`,
+          content: `Hi there! I can help you learn about ${college.name}. What would you like to know?`,
           sources: [],
           isLoading: false
         }
@@ -1006,6 +1032,20 @@ export default function CollegePage() {
     );
   };
 
+  // Add back button with state preservation
+  const handleBackClick = () => {
+    // Check if we have a previous URL stored in localStorage
+    const previousUrl = localStorage.getItem('previousUrl');
+    
+    if (previousUrl) {
+      // Use router to navigate back to the previous URL
+      router.push(previousUrl);
+    } else {
+      // If no previous URL, just go back in history
+      router.back();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-white">
@@ -1119,14 +1159,30 @@ export default function CollegePage() {
         />
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-20">
           <div className="flex items-center justify-between">
-            <motion.h1 
-              className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-md"
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              {college.name}
-            </motion.h1>
+            <div className="flex flex-col">
+              {/* Back button */}
+              <motion.button
+                onClick={handleBackClick}
+                className="mb-2 text-white flex items-center text-sm hover:underline self-start"
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Search Results
+              </motion.button>
+              
+              <motion.h1 
+                className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-md"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                {college.name}
+              </motion.h1>
+            </div>
             <motion.button
               onClick={handleStarClick}
               className="p-3 rounded-full bg-white/90 hover:bg-white transition-colors shadow-md"
@@ -1144,21 +1200,6 @@ export default function CollegePage() {
               />
             </motion.button>
           </div>
-          <motion.div 
-            className="flex items-center mt-2 text-white/90"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>{college.location.city}, {college.location.state}</span>
-            {college.location.nearestCity && (
-              <span className="ml-2 text-white/70 text-sm">(Near {college.location.nearestCity})</span>
-            )}
-          </motion.div>
         </div>
       </motion.div>
       
@@ -1660,7 +1701,7 @@ export default function CollegePage() {
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   className="bg-white rounded-l-xl shadow-xl h-[calc(100vh-180px)] sticky top-[100px] overflow-hidden border-l border-t border-b border-gray-200"
                 >
-                  <div className="flex items-center justify-between p-4 border-b bg-white text-gray-900">
+                  <div className="flex items-center justify-between p-4 border-b bg-[#4068ec] text-white">
                     <motion.h3 
                       className="font-semibold flex items-center"
                       initial={{ y: -10, opacity: 0 }}
@@ -1671,18 +1712,20 @@ export default function CollegePage() {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.3 }}
+                        aria-hidden="true"
                       >
-                        <MessageCircle className="w-4 h-4 mr-2 text-gray-500" />
+                        <GraduationCap className="w-5 h-5 mr-2 text-white" />
                       </motion.div>
                       Chat with {college.name}
                     </motion.h3>
                     <motion.button
                       onClick={() => setIsChatOpen(false)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-1 hover:bg-[#3559d9] rounded-full transition-colors"
                       whileHover={{ rotate: 90 }}
                       transition={{ type: "spring", stiffness: 300, damping: 10 }}
+                      aria-label="Close chat"
                     >
-                      <X className="w-5 h-5 text-gray-500" />
+                      <X className="w-5 h-5 text-white" />
                     </motion.button>
                   </div>
                   
@@ -1704,24 +1747,25 @@ export default function CollegePage() {
                               damping: 20, 
                               delay: 0.5 
                             }}
+                            aria-hidden="true"
                           >
-                            <MessageCircle className="w-12 h-12 mb-4 text-gray-300" />
+                            <BookOpen className="w-14 h-14 mb-4 text-[#4068ec]" />
                           </motion.div>
                           <motion.p 
-                            className="text-sm mb-2"
+                            className="text-base mb-2 font-medium text-gray-700"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.7 }}
                           >
-                            Ask anything about {college.name}!
+                            Ask about {college.name}
                           </motion.p>
                           <motion.p 
-                            className="text-xs"
+                            className="text-sm text-gray-500"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.8 }}
                           >
-                            Try asking about admissions, campus life, majors, costs, or student outcomes.
+                            Get information about admissions, majors, campus life and more.
                           </motion.p>
                         </motion.div>
                       ) : (
@@ -1750,12 +1794,13 @@ export default function CollegePage() {
                               <div
                                 className={`inline-block px-4 py-3 rounded-xl shadow-sm ${
                                   msg.role === 'user'
-                                    ? 'bg-gray-900 text-white rounded-tr-none'
+                                    ? 'bg-[#4068ec] text-white rounded-tr-none'
                                     : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-200'
                                 } max-w-[85%]`}
+                                role={msg.role === 'assistant' ? 'status' : undefined}
                               >
                                 {msg.isLoading ? (
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-2" aria-label="Assistant is typing">
                                     <motion.div 
                                       className="w-2 h-2 rounded-full bg-gray-300"
                                       animate={{ 
@@ -1859,7 +1904,7 @@ export default function CollegePage() {
                     
                     <motion.form 
                       onSubmit={handleSendMessage} 
-                      className="p-4 border-t bg-white"
+                      className="p-4 pb-6 border-t bg-white"
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.2, duration: 0.4 }}
@@ -1871,7 +1916,7 @@ export default function CollegePage() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.5, duration: 0.3 }}
                         >
-                          <p className="text-xs text-gray-500 mb-2">Try asking:</p>
+                          <p className="text-sm font-medium text-gray-700 mb-2">Try asking:</p>
                           <div className="flex flex-wrap gap-2">
                             {[
                               "What are the admission requirements?",
@@ -1883,7 +1928,7 @@ export default function CollegePage() {
                               <motion.button
                                 key={i}
                                 type="button"
-                                className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-1 px-2 rounded-md border border-gray-200 transition-colors"
+                                className="text-sm bg-[#f0f4ff] hover:bg-[#e1e8ff] text-[#4068ec] py-2 px-3 rounded-lg border border-[#d1dcff] transition-colors font-medium"
                                 onClick={() => {
                                   setNewMessage(question);
                                   // Use setTimeout to allow state update before submitting
@@ -1900,10 +1945,10 @@ export default function CollegePage() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: 0.6 + (i * 0.1) }}
                                 whileHover={{ 
-                                  scale: 1.05,
-                                  backgroundColor: "#f3f4f6"
+                                  scale: 1.03,
+                                  backgroundColor: "#d1dcff"
                                 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileTap={{ scale: 0.97 }}
                               >
                                 {question}
                               </motion.button>
@@ -1911,20 +1956,29 @@ export default function CollegePage() {
                           </div>
                         </motion.div>
                       )}
-                      <div className="flex gap-2" style={{ marginBottom: '20px' }}>
-                        <motion.input 
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder="Ask anything about the college..."
-                          className="w-full py-5 px-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm h-14 leading-normal"
-                          disabled={isSending}
-                          whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        />
+                      <div className="flex gap-2">
+                        <motion.div className="relative w-full">
+                          <motion.input 
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Ask anything about the college..."
+                            className="w-full py-4 px-4 pb-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:border-transparent transition-all shadow-sm h-16 leading-normal"
+                            disabled={isSending}
+                            whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            aria-label="Message input"
+                          />
+
+                          {newMessage.trim().length > 0 && (
+                            <div className="absolute right-3 bottom-3 text-xs text-gray-400">
+                              Press Enter to send
+                            </div>
+                          )}
+                        </motion.div>
                         <motion.button 
                           type="submit" 
                           disabled={isSending || !newMessage.trim()}
-                          className="bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-xl shadow-sm flex items-center justify-center"
+                          className={`bg-[#4068ec] hover:bg-[#3559d9] text-white p-3 rounded-xl shadow-sm flex items-center justify-center ${!newMessage.trim() && !isSending ? 'opacity-70 cursor-not-allowed' : ''}`}
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           animate={isSending ? { rotate: 360 } : {}}
@@ -1933,19 +1987,21 @@ export default function CollegePage() {
                             stiffness: 500, 
                             damping: 15
                           }}
+                          aria-label="Send message"
                         >
                           {isSending ? (
                             <motion.div 
-                              className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                               animate={{ rotate: 360 }}
                               transition={{ 
                                 duration: 1,
                                 repeat: Infinity,
                                 ease: "linear"
                               }}
+                              aria-label="Sending message"
                             />
                           ) : (
-                            <Send className="w-4 h-4" />
+                            <Send className="w-5 h-5" />
                           )}
                         </motion.button>
                       </div>
@@ -1967,7 +2023,7 @@ export default function CollegePage() {
                 className="fixed inset-0 z-50 md:hidden bg-white"
               >
                 <div className="flex flex-col h-full">
-                  <div className="flex items-center justify-between p-4 border-b bg-white text-gray-900">
+                  <div className="flex items-center justify-between p-4 border-b bg-[#4068ec] text-white">
                     <motion.h3 
                       className="font-semibold flex items-center"
                       initial={{ y: -10, opacity: 0 }}
@@ -1978,18 +2034,19 @@ export default function CollegePage() {
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: "spring", stiffness: 500, damping: 15, delay: 0.3 }}
+                        aria-hidden="true"
                       >
-                        <MessageCircle className="w-4 h-4 mr-2 text-gray-500" />
+                        <GraduationCap className="w-5 h-5 mr-2 text-white" />
                       </motion.div>
                       Chat with {college.name}
                     </motion.h3>
                     <motion.button
                 onClick={() => setIsChatOpen(false)}
-                      className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-1 hover:bg-[#3559d9] rounded-full transition-colors"
                       whileHover={{ rotate: 90 }}
                       transition={{ type: "spring", stiffness: 300, damping: 10 }}
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-white" />
                     </motion.button>
             </div>
             
@@ -2010,24 +2067,25 @@ export default function CollegePage() {
                             damping: 20, 
                             delay: 0.5 
                           }}
+                          aria-hidden="true"
                         >
-                          <MessageCircle className="w-12 h-12 mb-4 text-gray-300" />
+                          <BookOpen className="w-14 h-14 mb-4 text-[#4068ec]" />
                         </motion.div>
                         <motion.p 
-                          className="text-sm mb-2"
+                          className="text-base mb-2 font-medium text-gray-700"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: 0.7 }}
                         >
-                          Ask anything about {college.name}!
+                          Ask about {college.name}
                         </motion.p>
                         <motion.p 
-                          className="text-xs"
+                          className="text-sm text-gray-500"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: 0.8 }}
                         >
-                          Try asking about admissions, campus life, majors, costs, or student outcomes.
+                          Get information about admissions, majors, campus life and more.
                         </motion.p>
                       </motion.div>
                     ) : (
@@ -2056,12 +2114,13 @@ export default function CollegePage() {
                   <div
                               className={`inline-block px-4 py-3 rounded-xl shadow-sm ${
                       msg.role === 'user'
-                                  ? 'bg-gray-900 text-white rounded-tr-none'
+                                  ? 'bg-[#4068ec] text-white rounded-tr-none'
                                   : 'bg-gray-50 text-gray-800 rounded-tl-none border border-gray-200'
                               } max-w-[85%]`}
+                              role={msg.role === 'assistant' ? 'status' : undefined}
                             >
                               {msg.isLoading ? (
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-2" aria-label="Assistant is typing">
                                   <motion.div 
                                     className="w-2 h-2 rounded-full bg-gray-300"
                                     animate={{ 
@@ -2165,7 +2224,7 @@ export default function CollegePage() {
             
                   <motion.form 
                     onSubmit={handleSendMessage} 
-                    className="p-4 border-t bg-white"
+                    className="p-4 pb-6 border-t bg-white"
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.4 }}
@@ -2177,8 +2236,8 @@ export default function CollegePage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.5, duration: 0.3 }}
                       >
-                        <p className="text-xs text-gray-500 mb-2">Try asking:</p>
-                        <div className="flex flex-wrap gap-2">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Try asking:</p>
+                        <div className="grid grid-cols-2 gap-2 mb-2">
                           {[
                             "What are the admission requirements?",
                             `What majors is ${college.name} known for?`,
@@ -2189,7 +2248,7 @@ export default function CollegePage() {
                             <motion.button
                               key={i}
                               type="button"
-                              className="text-xs bg-gray-50 hover:bg-gray-100 text-gray-700 py-1 px-2 rounded-md border border-gray-200 transition-colors"
+                              className="text-sm bg-[#f0f4ff] hover:bg-[#e1e8ff] text-[#4068ec] py-2 px-3 rounded-lg border border-[#d1dcff] transition-colors font-medium text-left"
                               onClick={() => {
                                 setNewMessage(question);
                                 // Use setTimeout to allow state update before submitting
@@ -2206,10 +2265,10 @@ export default function CollegePage() {
                               animate={{ opacity: 1, scale: 1 }}
                               transition={{ delay: 0.6 + (i * 0.1) }}
                               whileHover={{ 
-                                scale: 1.05,
-                                backgroundColor: "#f3f4f6"
+                                scale: 1.03,
+                                backgroundColor: "#d1dcff"
                               }}
-                              whileTap={{ scale: 0.95 }}
+                              whileTap={{ scale: 0.97 }}
                             >
                               {question}
                             </motion.button>
@@ -2218,19 +2277,27 @@ export default function CollegePage() {
                       </motion.div>
                     )}
               <div className="flex gap-2">
-                      <motion.input
+                      <motion.div className="relative w-full">
+                        <motion.input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Ask anything about the college..."
-                        className="w-full py-5 px-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all shadow-sm h-14 leading-normal"
+                          className="w-full py-4 px-4 pb-5 text-base rounded-xl border border-gray-300 bg-white/80 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:border-transparent transition-all shadow-sm h-16 leading-normal"
                   disabled={isSending}
-                        whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
-                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                      />
+                          whileFocus={{ scale: 1.01, boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)" }}
+                          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                          aria-label="Message input"
+                        />
+                        {newMessage.trim().length > 0 && (
+                          <div className="absolute right-3 bottom-3 text-xs text-gray-400">
+                            Press Enter to send
+                          </div>
+                        )}
+                      </motion.div>
                       <motion.button 
                         type="submit" 
                         disabled={isSending || !newMessage.trim()}
-                        className="bg-gray-900 hover:bg-gray-800 text-white p-3 rounded-xl shadow-sm flex items-center justify-center"
+                        className={`bg-[#4068ec] hover:bg-[#3559d9] text-white p-3 rounded-xl shadow-sm flex items-center justify-center ${!newMessage.trim() && !isSending ? 'opacity-70 cursor-not-allowed' : ''}`}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         animate={isSending ? { rotate: 360 } : {}}
@@ -2239,19 +2306,21 @@ export default function CollegePage() {
                           stiffness: 500, 
                           damping: 15
                         }}
+                        aria-label="Send message"
                       >
                         {isSending ? (
                           <motion.div 
-                            className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                            className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
                             animate={{ rotate: 360 }}
                             transition={{ 
                               duration: 1,
                               repeat: Infinity,
                               ease: "linear"
                             }}
+                            aria-label="Sending message"
                           />
                         ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                         )}
                       </motion.button>
               </div>
@@ -2262,31 +2331,34 @@ export default function CollegePage() {
       </AnimatePresence>
         </div>
 
-      {/* Chat Toggle Button */}
+      {/* Chat Toggle Button for Mobile */}
         <AnimatePresence>
           {!isChatOpen && (
-      <motion.button
+            <motion.button
               onClick={() => setIsChatOpen(true)}
-              className="fixed md:hidden bottom-4 right-4 w-14 h-14 bg-gray-900 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-800 transition-all z-40"
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              whileHover={{ scale: 1.1, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
-              whileTap={{ scale: 0.95 }}
+              className="fixed md:hidden bottom-6 right-0 bg-[#4068ec] text-white rounded-l-lg shadow-lg flex items-center justify-center hover:bg-[#3559d9] transition-all z-40 px-5 py-4"
+              initial={{ x: 100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 100, opacity: 0 }}
+              whileHover={{ x: -4, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
+              whileTap={{ scale: 0.98 }}
               transition={{ 
                 type: "spring",
                 stiffness: 400,
-                damping: 17
+                damping: 22
               }}
+              aria-label="Open chat with university assistant"
             >
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.1, type: "spring", stiffness: 500 }}
-      >
-        <MessageCircle className="w-6 h-6" />
+                className="flex items-center"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <GraduationCap className="w-5 h-5 mr-2" />
+                <span className="font-medium text-sm whitespace-nowrap">Chat with University</span>
               </motion.div>
-      </motion.button>
+            </motion.button>
           )}
         </AnimatePresence>
         
@@ -2295,7 +2367,7 @@ export default function CollegePage() {
           {!isChatOpen && (
             <motion.button
               onClick={() => setIsChatOpen(true)}
-              className="hidden md:flex fixed right-0 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white py-4 px-3 rounded-l-lg shadow-lg items-center justify-center hover:bg-gray-800 transition-all z-40"
+              className="hidden md:flex fixed right-0 bottom-6 bg-[#4068ec] text-white py-4 px-5 rounded-l-lg shadow-lg items-center justify-center hover:bg-[#3559d9] transition-all z-40"
               initial={{ x: 100, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 100, opacity: 0 }}
@@ -2305,6 +2377,7 @@ export default function CollegePage() {
                 stiffness: 400,
                 damping: 22
               }}
+              aria-label="Open chat with university assistant"
             >
               <motion.div 
                 className="flex items-center"
@@ -2312,8 +2385,8 @@ export default function CollegePage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
               >
-                <MessageCircle className="w-5 h-5 mr-2" />
-                <span className="font-medium text-sm">Chat</span>
+                <GraduationCap className="w-5 h-5 mr-2" />
+                <span className="font-medium text-sm whitespace-nowrap">Chat with University</span>
               </motion.div>
             </motion.button>
           )}

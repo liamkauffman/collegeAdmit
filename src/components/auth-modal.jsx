@@ -138,7 +138,7 @@ export function AuthModal({ isOpen, onClose, redirectPath = "/", actionType = "s
           <div className="flex flex-col items-center mb-6">
             <div className="flex items-center justify-center mb-3">
               <SvgLogo />
-              <span className="text-xl font-bold text-[#4068ec] dark:text-[#63D2FF] ml-2">CollegeAdmit.AI</span>
+              <span className="text-xl font-bold text-[#4068ec] dark:text-[#63D2FF] ml-2">CollegeCompass</span>
             </div>
             <DialogTitle className="text-2xl font-semibold text-center text-[#4068ec] dark:text-[#63D2FF]">
               {actionType === "search" 

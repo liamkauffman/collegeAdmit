@@ -6,7 +6,7 @@ export function ImageLogo({ className, size = 32 }) {
     <div className={className} style={{ width: size, height: size }}>
       <Image
         src="/assets/TempLogo.png"
-        alt="CollegeAdmit.AI Logo"
+        alt="CollegeCompass Logo"
         width={size}
         height={size}
         priority

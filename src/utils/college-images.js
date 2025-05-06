@@ -1,95 +1,231 @@
-// Map of college images
+// Map of college images (can be used for specific colleges)
 const COLLEGE_IMAGES = {
   // Add specific college images here if you have them
 };
 
-// Fallback images that actually work
-const FALLBACK_IMAGES = [
-  // Campus buildings and architecture
-  "https://images.pexels.com/photos/207692/pexels-photo-207692.jpeg?auto=compress&cs=tinysrgb&w=1200", // Library
-  "https://images.pexels.com/photos/159490/yale-university-landscape-universities-schools-159490.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus
-  "https://images.pexels.com/photos/356065/pexels-photo-356065.jpeg?auto=compress&cs=tinysrgb&w=1200", // Building
-  "https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus Path
-  "https://images.pexels.com/photos/159751/book-read-literature-pages-159751.jpeg?auto=compress&cs=tinysrgb&w=1200", // Library books
-  "https://images.pexels.com/photos/256520/pexels-photo-256520.jpeg?auto=compress&cs=tinysrgb&w=1200", // Library interior
-  "https://images.pexels.com/photos/256431/pexels-photo-256431.jpeg?auto=compress&cs=tinysrgb&w=1200", // Modern campus building
-  "https://images.pexels.com/photos/1167021/pexels-photo-1167021.jpeg?auto=compress&cs=tinysrgb&w=1200", // Historic college building
-  
-  // Campus life
-  "https://images.pexels.com/photos/6147369/pexels-photo-6147369.jpeg?auto=compress&cs=tinysrgb&w=1200", // Students walking
-  "https://images.pexels.com/photos/1438072/pexels-photo-1438072.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus quad
-  "https://images.pexels.com/photos/5940841/pexels-photo-5940841.jpeg?auto=compress&cs=tinysrgb&w=1200", // Students studying
-  "https://images.pexels.com/photos/6147276/pexels-photo-6147276.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus life
-  "https://images.pexels.com/photos/4491461/pexels-photo-4491461.jpeg?auto=compress&cs=tinysrgb&w=1200", // Science lab
-  
-  // Nature and landscapes on campus
-  "https://images.pexels.com/photos/1534057/pexels-photo-1534057.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus garden
-  "https://images.pexels.com/photos/6544096/pexels-photo-6544096.jpeg?auto=compress&cs=tinysrgb&w=1200", // College courtyard
-  "https://images.pexels.com/photos/948365/pexels-photo-948365.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus trees
-  "https://images.pexels.com/photos/736779/pexels-photo-736779.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus pond
-  
-  // Academic focus
-  "https://images.pexels.com/photos/356079/pexels-photo-356079.jpeg?auto=compress&cs=tinysrgb&w=1200", // Classroom
-  "https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=1200", // Campus pathway
-  "https://images.pexels.com/photos/8199562/pexels-photo-8199562.jpeg?auto=compress&cs=tinysrgb&w=1200", // Engineering lab
-  "https://images.pexels.com/photos/2982449/pexels-photo-2982449.jpeg?auto=compress&cs=tinysrgb&w=1200", // Chemistry lab
-  "https://images.pexels.com/photos/714699/pexels-photo-714699.jpeg?auto=compress&cs=tinysrgb&w=1200", // Computer lab
-];
+// Cache for API results to avoid duplicate requests
+const API_CACHE = {
+  // Maps search terms to API responses
+  queries: {},
+  // Maps college IDs to selected images 
+  colleges: {}
+};
 
-// Track which fallback images are already used on the current page
+// Track which images are already used on the current page
 let usedImagesOnCurrentPage = new Set();
 
-// Function to reset the tracking of used images (call this when navigating to a new page)
+/**
+ * Resets tracking of used images when navigating to a new page
+ */
 export function resetUsedImages() {
+  console.log('Resetting used images');
   usedImagesOnCurrentPage.clear();
 }
 
-// Get a fallback image based on college name that hasn't been used yet on the page
-function getFallbackImage(collegeName) {
-  if (!collegeName) return FALLBACK_IMAGES[0];
+/**
+ * Searches the Pexels API for college-related images
+ * @param {string} query - Search term for the Pexels API
+ * @param {Object} options - Additional search options
+ * @returns {Promise<Object[]>} Promise resolving to array of photo objects
+ */
+export async function searchPexelsImages(query, options = {}) {
+  console.log(`Searching Pexels images for query: ${query}`, options);
+  const {
+    perPage = 15,
+    orientation = 'landscape',
+    size = 'medium'
+  } = options;
   
-  const hash = String(collegeName).split('').reduce((acc, char) => {
-    return char.charCodeAt(0) + ((acc << 5) - acc);
-  }, 0);
-  
-  // First try the hash-based image
-  let fallbackIndex = Math.abs(hash) % FALLBACK_IMAGES.length;
-  let fallbackImage = FALLBACK_IMAGES[fallbackIndex];
-  
-  // If this image is already used, find the next available one
-  if (usedImagesOnCurrentPage.has(fallbackImage)) {
-    // Try to find an unused image
-    for (let i = 0; i < FALLBACK_IMAGES.length; i++) {
-      const nextIndex = (fallbackIndex + i + 1) % FALLBACK_IMAGES.length;
-      const nextImage = FALLBACK_IMAGES[nextIndex];
-      
-      if (!usedImagesOnCurrentPage.has(nextImage)) {
-        fallbackImage = nextImage;
-        break;
-      }
-    }
-    
-    // If all images are used, just use the original hash-based one
-    // (this is unlikely with a large number of fallback images)
+  // Check cache first to avoid redundant API calls
+  const cacheKey = `${query}-${perPage}-${orientation}-${size}`;
+  if (API_CACHE.queries[cacheKey]) {
+    console.log('Returning cached Pexels results for query:', query);
+    return API_CACHE.queries[cacheKey];
   }
   
-  // Track that this image is now used
-  usedImagesOnCurrentPage.add(fallbackImage);
+  // Pexels API key should be in environment variables
+  const apiKey = process.env.NEXT_PUBLIC_PEXELS_API_KEY;
+  if (!apiKey) {
+    console.error('Missing Pexels API key. Set NEXT_PUBLIC_PEXELS_API_KEY in your environment.');
+    return [];
+  }
   
-  return fallbackImage;
+  try {
+    const url = new URL('https://api.pexels.com/v1/search');
+    url.searchParams.append('query', query);
+    url.searchParams.append('per_page', perPage);
+    url.searchParams.append('orientation', orientation);
+    url.searchParams.append('size', size);
+    
+    console.log('Fetching from Pexels API:', url.toString());
+    const response = await fetch(url.toString(), {
+      headers: {
+        'Authorization': apiKey
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Pexels API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Received ${data.photos.length} photos from Pexels API`);
+    
+    // Store in cache
+    API_CACHE.queries[cacheKey] = data.photos;
+    
+    return data.photos;
+  } catch (error) {
+    console.error('Error fetching from Pexels API:', error);
+    return [];
+  }
 }
 
-// Simplified getCollegeImage function that returns immediately
-export function getCollegeImage(collegeId, collegeName) {
+/**
+ * Creates an image object with attribution info
+ * @param {Object} photo - Pexels photo object
+ * @returns {Object} Formatted image object with URL and attribution
+ */
+function createImageObject(photo) {
+  console.log('Creating image object for photo:', photo.id);
+  return {
+    url: photo.src.large,
+    alt: photo.alt || `Campus image by ${photo.photographer}`,
+    attribution: {
+      photographer: photo.photographer,
+      photographerUrl: photo.photographer_url,
+      pexelsUrl: photo.url,
+      id: photo.id
+    }
+  };
+}
+
+/**
+ * Gets college image asynchronously from Pexels API
+ * @param {string|number} collegeId - ID of the college
+ * @param {string} collegeName - Name of the college
+ * @returns {Promise<Object|null>} Promise resolving to image object or null if not found
+ */
+export async function getCollegeImageAsync(collegeId, collegeName) {
+  console.log(`Getting college image async for: ${collegeName} (ID: ${collegeId})`);
   // Safely convert collegeId to string if it exists
   const id = collegeId ? String(collegeId).toLowerCase() : '';
   
-  // Try to get a specific college image
+  // Try to get a specific college image from hardcoded map
   const specificImage = COLLEGE_IMAGES[id];
   if (specificImage) {
+    console.log(`Found specific image for college ID: ${id}`);
     return specificImage;
   }
+  
+  // Check if we already cached an image for this college
+  if (API_CACHE.colleges[id] && !API_CACHE.colleges[id].placeholder) {
+    console.log(`Returning cached image for college ID: ${id}`);
+    return API_CACHE.colleges[id];
+  }
+  
+  try {
+    // Create search query based on college name
+    const searchQuery = `${collegeName} university campus`;
+    
+    // Search for images
+    console.log(`Searching for images with query: ${searchQuery}`);
+    const photos = await searchPexelsImages(searchQuery, {
+      perPage: 10,
+      orientation: 'landscape'
+    });
+    
+    if (photos && photos.length > 0) {
+      console.log(`Found ${photos.length} photos for ${collegeName}`);
+      // Try to find an image that hasn't been used yet
+      let selectedPhoto = photos[0];
+      
+      for (const photo of photos) {
+        const photoUrl = photo.src.large;
+        if (!usedImagesOnCurrentPage.has(photoUrl)) {
+          selectedPhoto = photo;
+          console.log(`Selected unused photo: ${photo.id}`);
+          break;
+        }
+      }
+      
+      // Create image object with attribution
+      const imageObject = createImageObject(selectedPhoto);
+      
+      // Cache for future use
+      API_CACHE.colleges[id] = imageObject;
+      
+      // Mark as used on this page
+      usedImagesOnCurrentPage.add(imageObject.url);
+      console.log(`Marked image as used: ${imageObject.url}`);
+      
+      return imageObject;
+    }
+    // No images found, return null
+    return null;
+  } catch (error) {
+    console.error('Error getting college image from Pexels:', error);
+    return null;
+  }
+}
 
-  // Use fallback image
-  return getFallbackImage(collegeName);
-} 
+/**
+ * Synchronous version that returns an image URL immediately
+ * and triggers async fetch in background if needed
+ * @param {string|number} collegeId - ID of the college
+ * @param {string} collegeName - Name of the college
+ * @returns {string|null} Image URL or null if no image available yet
+ */
+export function getCollegeImage(collegeId, collegeName) {
+  console.log(`Getting college image for: ${collegeName} (ID: ${collegeId})`);
+  const id = collegeId ? String(collegeId).toLowerCase() : '';
+  
+  // Try to get a specific college image from hardcoded map
+  const specificImage = COLLEGE_IMAGES[id];
+  if (specificImage) {
+    console.log(`Found specific image for college ID: ${id}`);
+    return typeof specificImage === 'string' ? specificImage : specificImage.url;
+  }
+  
+  // Check if we already have a cached version
+  if (API_CACHE.colleges[id]) {
+    console.log(`Returning cached image for college ID: ${id}`);
+    const cachedImage = API_CACHE.colleges[id];
+    return typeof cachedImage === 'string' ? cachedImage : cachedImage.url;
+  }
+  
+  // Mark this college as loading, but don't provide a placeholder
+  API_CACHE.colleges[id] = { 
+    placeholder: true,
+    loading: true
+  };
+  
+  // Start async fetch in background
+  getCollegeImageAsync(collegeId, collegeName)
+    .then(result => {
+      // Update the cache with the fetched image
+      if (result) {
+        console.log(`Async fetch complete for ${collegeName}. Updating cache.`);
+        API_CACHE.colleges[id] = result;
+        
+        // Dispatch a custom event to notify components to update
+        if (typeof window !== 'undefined') {
+          console.log(`Dispatching collegeImageLoaded event for ${collegeName}`);
+          window.dispatchEvent(new CustomEvent('collegeImageLoaded', { 
+            detail: { collegeId: id, imageUrl: result.url }
+          }));
+        }
+      } else {
+        // If no image was found, update cache to reflect that
+        delete API_CACHE.colleges[id];
+      }
+    })
+    .catch(error => {
+      console.error(`Error in async image fetch for ${collegeName}:`, error);
+      // On error, remove the placeholder
+      delete API_CACHE.colleges[id];
+    });
+  
+  // Return null to indicate image is loading
+  return null;
+}

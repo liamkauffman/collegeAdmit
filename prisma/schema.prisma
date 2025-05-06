@@ -34,6 +34,7 @@ model User {
   resume        Resume?
   favorites     UserFavorites[]
   comparisons   CollegeComparison[]
+  savedSearches SavedSearch[]
 }
 
 enum UserRole {
@@ -193,6 +194,9 @@ model College {
   applications    CollegeApplication[]
   majors          CollegeMajor[]
   favoritedBy     UserFavorites[]
+  
+  topMajors       CollegeTopMajor[]
+  additionalInfo  CollegeAdditionalInfo?
 }
 
 model SavedCollege {
@@ -288,4 +292,50 @@ model CollegeComparison {
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([userId])
+}
+
+
+model CollegeTopMajor {
+  id          String   @id @default(cuid())
+  collegeId   String
+  name        String
+  popularity  Float?
+  sourceUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  college     College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  
+  @@index([collegeId])
+}
+
+model CollegeAdditionalInfo {
+  id                          String   @id @default(cuid())
+  collegeId                   String   @unique
+  rankings                    Json?    // Store rankings data as JSON
+  sizeInfo                    Json?    // Store size data as JSON  
+  internationalStudentPercent Float?
+  qualityOfLife               Json?    // Store as JSON
+  employmentOutcomes          Json?    // Store as JSON
+  graduateSchoolOutcomes      Json?    // Store as JSON
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+  
+  college                     College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+} 
+
+model SavedSearch {
+  id                String    @id @default(cuid())
+  userId            String
+  initialQuery      String
+  followUpQandA     Json?     // Array of follow-up questions and answers
+  recommendations   Json?     // Saved college recommendations
+  searchSummary     String?   @db.Text
+  isFavorite        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
 }

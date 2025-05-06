@@ -28,6 +28,17 @@ export function ConversationThread({
   const [suggestedQueries, setSuggestedQueries] = useState([]);
   const searchSectionRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  // Auto-resize textarea as user types
+  useEffect(() => {
+    if (textareaRef.current) {
+      // Reset height to auto to correctly calculate the new height
+      textareaRef.current.style.height = 'auto';
+      // Set the new height based on the scrollHeight
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [input]);
 
   // Extract college names from the last response to generate suggestions
   useEffect(() => {
@@ -85,6 +96,14 @@ export function ConversationThread({
     if (!input.trim()) return;
     onSendMessage(input);
     setInput('');
+  };
+
+  // Handle enter key to submit, but allow shift+enter for new lines
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
   };
 
   // Determine the divider text based on the last response
@@ -172,17 +191,20 @@ export function ConversationThread({
 
       {/* Search form */}
       <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.07)] p-1.5 border border-gray-100">
-        <form onSubmit={handleSubmit} className="relative flex items-center">
-          <div className="absolute left-4 text-gray-400">
+        <form onSubmit={handleSubmit} className="relative flex items-start">
+          <div className="absolute left-4 top-4 text-gray-400">
             <Search className="w-5 h-5" />
           </div>
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={getPlaceholderText()}
             disabled={isTyping}
-            className={`w-full py-4 pl-12 pr-24 rounded-xl bg-transparent
+            rows={1}
+            className={`w-full min-h-[56px] py-4 pl-12 pr-24 rounded-xl bg-transparent
+              resize-none overflow-hidden
               focus:outline-none focus:ring-2 focus:ring-[#4068ec] focus:ring-offset-0
               transition-all duration-200 text-gray-800 placeholder-gray-500
               ${isTyping ? 'opacity-70 cursor-not-allowed' : ''}`}
@@ -190,7 +212,7 @@ export function ConversationThread({
           <button
             type="submit"
             disabled={!input.trim() || isTyping}
-            className={`absolute right-2 flex items-center gap-2 px-4 py-2 rounded-lg
+            className={`absolute right-2 top-2 flex items-center gap-2 px-4 py-2 rounded-lg
               transition-all duration-200 ${
                 input.trim() && !isTyping
                   ? 'bg-[#4068ec] text-white hover:bg-[#3255d0]' 

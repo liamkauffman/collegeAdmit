@@ -6,18 +6,47 @@ import { MapPin, Sparkles, Star } from "lucide-react";
 import { getCollegeImage, resetUsedImages } from '@/utils/college-images';
 import { useSession } from "next-auth/react";
 
-export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavorited = false }) {
+export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavorited = false, preserveState = false }) {
   const router = useRouter();
   const { data: session } = useSession();
   const [showDetails, setShowDetails] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isStarred, setIsStarred] = useState(isFavorited);
+  const [collegeImageUrl, setCollegeImageUrl] = useState(null);
+  
+  useEffect(() => {
+    // Get initial image
+    if (college) {
+      const initialImage = getCollegeImage(college.id, college.name);
+      setCollegeImageUrl(initialImage);
+    }
+    
+    // Listen for image update events
+    const handleImageLoaded = (event) => {
+      if (event.detail.collegeId === String(college.id).toLowerCase()) {
+        setCollegeImageUrl(event.detail.imageUrl);
+        setImageError(false); // Reset error state if we got a new image
+      }
+    };
+    
+    window.addEventListener('collegeImageLoaded', handleImageLoaded);
+    
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener('collegeImageLoaded', handleImageLoaded);
+    };
+  }, [college?.id, college?.name]);
 
   if (!college) return null;
 
-  const collegeImage = getCollegeImage(college.id, college.name);
-  // Generate a different image on error
-  const fallbackImage = imageError ? getCollegeImage(college.id + "-fallback", college.name + " Campus") : collegeImage;
+  // Handle image errors or loading state
+  const handleImageError = () => {
+    setImageError(true);
+    console.error(`Failed to load image for college: ${college.name}`);
+  };
+
+  // Show a loading skeleton if the image is still loading
+  const showImageLoadingSkeleton = !collegeImageUrl;
 
   // Helper functions
   const formatCost = (cost) => {
@@ -60,6 +89,23 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
         return 'bg-gradient-to-br from-amber-400 to-amber-500';
       default:
         return 'bg-gradient-to-br from-slate-500 to-slate-600';
+    }
+  };
+
+  // Get shadow color based on type
+  const getShadowColor = () => {
+    switch (type) {
+      case 'bestFit':
+      case 'bestfit':
+        return 'rgba(59, 130, 246, 0.6)'; // blue-500 with opacity
+      case 'reach':
+        return 'rgba(244, 63, 94, 0.6)'; // rose-500 with opacity
+      case 'target':
+        return 'rgba(16, 185, 129, 0.6)'; // emerald-500 with opacity
+      case 'safety':
+        return 'rgba(251, 191, 36, 0.6)'; // amber-400 with opacity
+      default:
+        return 'rgba(100, 116, 139, 0.6)'; // slate-500 with opacity
     }
   };
 
@@ -115,6 +161,16 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
     }
     
     // Navigate using the actual college ID
+    if (preserveState) {
+      // Save the current URL with any search params to localStorage
+      // This will allow us to return to the same search results
+      const currentUrl = window.location.href;
+      localStorage.setItem('previousUrl', currentUrl);
+      
+      // Also save what college we're viewing for better back behavior
+      localStorage.setItem('lastViewedCollege', college.id);
+    }
+    
     router.push(`/college/${college.id}`);
   };
   
@@ -126,6 +182,14 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
       console.error("Missing college ID for navigation", similarCollege);
       return;
     }
+    
+    if (preserveState) {
+      // Save the current URL to localStorage
+      const currentUrl = window.location.href;
+      localStorage.setItem('previousUrl', currentUrl);
+      localStorage.setItem('lastViewedCollege', collegeId);
+    }
+    
     router.push(`/college/${collegeId}`);
   };
 
@@ -171,19 +235,49 @@ export function CollegeCard({ college, type = "normal", onToggleFavorite, isFavo
     }
   };
 
+  // Create the 3D card effect style with backdrop shadow
+  const cardStyle = {
+    position: 'relative',
+    boxShadow: `0 0 1px rgba(0, 0, 0, 0.1), 
+                8px 8px 0 ${getShadowColor()}`,
+    transform: 'translateZ(0)',
+    transition: 'transform 0.3s, box-shadow 0.3s',
+  };
+
+  const cardHoverStyle = {
+    transform: 'translateY(-4px) translateZ(0)',
+    boxShadow: `0 0 1px rgba(0, 0, 0, 0.1), 
+                10px 10px 0 ${getShadowColor()}`,
+  };
+
   return (
     <div 
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_rgba(8,_112,_184,_0.1)] cursor-pointer"
+      className="group relative flex h-full flex-col overflow-hidden rounded-xl bg-white transition-all duration-300 cursor-pointer"
       onClick={handleCardClick}
+      style={cardStyle}
+      onMouseEnter={(e) => {
+        Object.assign(e.currentTarget.style, cardHoverStyle);
+      }}
+      onMouseLeave={(e) => {
+        Object.assign(e.currentTarget.style, cardStyle);
+      }}
     >
       <div className="relative h-48 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10 transition-opacity group-hover:opacity-70"></div>
-        <img 
-          src={fallbackImage}
-          alt={`${college.name} campus`}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          onError={() => setImageError(true)}
-        />
+        
+        {showImageLoadingSkeleton ? (
+          <div className="h-full w-full bg-gray-200 animate-pulse flex items-center justify-center">
+            <span className="text-gray-400 text-sm">Loading image...</span>
+          </div>
+        ) : (
+          <img 
+            src={collegeImageUrl}
+            alt={`${college.name} campus`}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={handleImageError}
+          />
+        )}
+        
         <div className="absolute top-4 left-4 z-20">
           <span className={`${getBgColor()} backdrop-blur-sm px-3 py-1.5 rounded-full text-sm font-medium text-white shadow-sm transition-transform duration-300 group-hover:scale-105`}>
             {getTypeLabel()}

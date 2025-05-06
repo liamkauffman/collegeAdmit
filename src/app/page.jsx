@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SearchForm } from "@/components/search-form"
 import NavigationBar from "@/components/navigation-bar"
 import { LoadingAnimation } from "@/components/loading-animation"
@@ -12,9 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Search, ClipboardEdit, Bot, Sparkles, Laptop, ClipboardCheck, Compass, GraduationCap } from "lucide-react";
 import { ConversationThread } from "@/components/conversation-thread";
 import { resetUsedImages } from "@/utils/college-images";
+import { SearchHistoryButton } from "@/components/search-history-button";
+import { ExampleQuestions } from "@/components/example-questions";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useStatePersistence } from "@/hooks/useStatePersistence";
 
 export default function Home() {
   const { data: session, status } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // State variables
   const [initialQuery, setInitialQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState("initial"); // "initial", "followup", "results"
@@ -32,6 +40,258 @@ export default function Home() {
   const [searchHistory, setSearchHistory] = useState([]);
   const [shouldScrollToSearch, setShouldScrollToSearch] = useState(false);
   const [responseMode, setResponseMode] = useState("new_search");
+  const [stateLoaded, setStateLoaded] = useState(false);
+  
+  // Use the state persistence hook for handling back navigation
+  useStatePersistence(() => {
+    // This will be called when returning from a college detail page
+    console.log("State persistence hook detected return navigation");
+    // Load the saved state
+    const savedState = localStorage.getItem('lastSearchState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        console.log('Restoring state from persistence hook:', state);
+        
+        setInitialQuery(state.initialQuery || "");
+        setCurrentStep(state.currentStep || "initial");
+        setFollowUpQuestions(state.followUpQuestions || []);
+        setCurrentQuestionIndex(state.currentQuestionIndex || 0);
+        setFollowUpAnswers(state.followUpAnswers || []);
+        setRecommendations(state.recommendations || null);
+        setSearchSummary(state.searchSummary || "");
+        setConversationHistory(state.conversationHistory || []);
+        setResponseMode(state.responseMode || "new_search");
+        setStateLoaded(true);
+      } catch (err) {
+        console.error('Error restoring state from persistence hook:', err);
+      }
+    }
+  });
+  
+  // Load saved state from localStorage on initial mount
+  useEffect(() => {
+    const loadSavedState = () => {
+      // Prevent infinite restoration
+      if (stateLoaded) {
+        return;
+      }
+      
+      try {
+        // Check if we have a search ID in the URL
+        const searchId = searchParams?.get('sid');
+        
+        // If we're on the homepage with no search ID, reset the search state
+        if (window.location.pathname === '/' && !searchId) {
+          console.log('On homepage with no search ID, resetting search state');
+          resetSearch();
+          setStateLoaded(true);
+          return;
+        }
+        
+        if (searchId) {
+          // Load specific search by ID
+          const savedSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+          const savedSearch = savedSearches.find(s => s.id === searchId);
+          
+          if (savedSearch) {
+            console.log('Restoring specific search from localStorage:', savedSearch);
+            restoreSearch(savedSearch);
+            return;
+          }
+        }
+        
+        // If we have a previousUrl indicating we're returning from a college page,
+        // the useStatePersistence hook will handle restoration
+        const hasPreviousUrl = localStorage.getItem('previousUrl');
+        if (hasPreviousUrl) {
+          console.log("Skipping normal state restoration, letting useStatePersistence handle it");
+          return;
+        }
+        
+        // Otherwise try to load most recent state
+        const savedState = localStorage.getItem('lastSearchState');
+        if (savedState) {
+          const state = JSON.parse(savedState);
+          console.log('Restoring last state from localStorage:', state);
+          
+          setInitialQuery(state.initialQuery || "");
+          setCurrentStep(state.currentStep || "initial");
+          setFollowUpQuestions(state.followUpQuestions || []);
+          setCurrentQuestionIndex(state.currentQuestionIndex || 0);
+          setFollowUpAnswers(state.followUpAnswers || []);
+          setRecommendations(state.recommendations || null);
+          setSearchSummary(state.searchSummary || "");
+          setConversationHistory(state.conversationHistory || []);
+          setResponseMode(state.responseMode || "new_search");
+        }
+      } catch (err) {
+        console.error('Error loading saved state:', err);
+        // If there's an error, just start fresh
+        resetSearch(false);
+      } finally {
+        setStateLoaded(true);
+      }
+    };
+    
+    // Only attempt to load state on first render
+    if (!stateLoaded) {
+      loadSavedState();
+    }
+    
+    // Set up listener for back/forward navigation
+    const handlePopState = (event) => {
+      console.log('Navigation event detected:', event);
+      // Only attempt to reload state if URL changes
+      const currentSid = new URL(window.location.href).searchParams.get('sid');
+      const urlChanged = searchParams?.get('sid') !== currentSid;
+      
+      if (urlChanged) {
+        // If we're back at the homepage with no search ID, reset completely
+        if (window.location.pathname === '/' && !currentSid) {
+          console.log('Navigation back to homepage with no search ID, resetting search');
+          resetSearch();
+          return;
+        }
+        
+        setStateLoaded(false); // Reset state loaded flag so we can load again
+        loadSavedState();
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [searchParams, stateLoaded]);
+  
+  // Save state to localStorage whenever it changes
+  useEffect(() => {
+    // Only save state if it's been loaded first (prevents overwriting with empty state)
+    if (!stateLoaded) return;
+    
+    // Store a value to indicate we need to save state
+    const saveTimeout = setTimeout(() => {
+      const stateToSave = {
+        initialQuery,
+        currentStep,
+        followUpQuestions,
+        currentQuestionIndex,
+        followUpAnswers,
+        recommendations,
+        searchSummary,
+        conversationHistory,
+        responseMode
+      };
+      
+      localStorage.setItem('lastSearchState', JSON.stringify(stateToSave));
+      
+      // Update URL with unique search ID for direct sharing/navigation
+      if (currentStep === "results" && recommendations) {
+        // Create a unique ID for this search if we don't already have one
+        const searchId = generateSearchId(initialQuery);
+        
+        // Store this search in the history with its ID
+        const recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        
+        // Check if this search already exists
+        const existingIndex = recentSearches.findIndex(s => s.id === searchId);
+        
+        const searchToSave = {
+          id: searchId,
+          initialQuery,
+          followUpQuestions,
+          followUpAnswers,
+          recommendations,
+          searchSummary,
+          conversationHistory,
+          timestamp: Date.now()
+        };
+        
+        if (existingIndex >= 0) {
+          // Update existing search
+          recentSearches[existingIndex] = searchToSave;
+        } else {
+          // Add new search, limit to 20 recent searches
+          recentSearches.unshift(searchToSave);
+          if (recentSearches.length > 20) {
+            recentSearches.pop();
+          }
+        }
+        
+        localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+        
+        // Update URL without causing navigation
+        if (typeof window !== 'undefined') {
+          const url = new URL(window.location.href);
+          // Only update URL if needed
+          if (url.searchParams.get('sid') !== searchId) {
+            url.searchParams.set('sid', searchId);
+            window.history.replaceState({}, '', url);
+          }
+        }
+      }
+    }, 500); // Debounce to prevent excessive updates
+    
+    // Cleanup the timeout
+    return () => clearTimeout(saveTimeout);
+  }, [initialQuery, currentStep, followUpQuestions, currentQuestionIndex, followUpAnswers, recommendations, searchSummary, conversationHistory, responseMode, stateLoaded]);
+
+  // Generate a consistent ID based on query
+  const generateSearchId = (query) => {
+    // Simple hash function
+    let hash = 0;
+    for (let i = 0; i < query.length; i++) {
+      const char = query.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    // Combine with timestamp for uniqueness
+    return `${Math.abs(hash)}-${Date.now().toString(36)}`;
+  };
+  
+  // Restore a specific search state
+  const restoreSearch = (savedSearch) => {
+    // Batch all state updates together to prevent multiple renders
+    const updates = () => {
+      setInitialQuery(savedSearch.initialQuery || "");
+      setFollowUpQuestions(savedSearch.followUpQuestions || []);
+      setFollowUpAnswers(savedSearch.followUpAnswers || []);
+      setRecommendations(savedSearch.recommendations || null);
+      setSearchSummary(savedSearch.searchSummary || "");
+      setConversationHistory(savedSearch.conversationHistory || []);
+      setCurrentStep(savedSearch.recommendations ? "results" : "followup");
+      setResponseMode("new_search");
+      // Set this last to avoid triggering re-renders with intermediate state
+      setStateLoaded(true);
+    };
+    
+    // Batch updates in next tick to avoid potential React batching issues
+    setTimeout(updates, 0);
+  };
+  
+  useEffect(() => {
+    // Add or remove scrolling ability based on current step
+    console.log('Updating scroll behavior for step:', currentStep);
+    
+    if (currentStep === "initial") {
+      console.log('Setting overflow hidden for initial step');
+      document.body.style.overflow = 'hidden';
+    } else {
+      console.log('Setting overflow auto for non-initial step');
+      document.body.style.overflow = 'auto';
+      // Add hide-scrollbar class to body when in results mode
+      if (currentStep === "results") {
+        console.log('Adding hide-scrollbar class for results step');
+        document.body.classList.add('hide-scrollbar');
+      }
+    }
+    
+    // Cleanup function
+    return () => {
+      console.log('Cleanup: Resetting scroll behavior');
+      document.body.style.overflow = 'auto';
+      document.body.classList.remove('hide-scrollbar');
+    };
+  }, [currentStep]);
   
   // Function to fetch a single follow-up question
   const fetchSingleFollowUpQuestion = async () => {
@@ -309,6 +569,9 @@ export default function Home() {
       setIsLoading(true);
       setError(null);
       
+      // Reset used images before starting the recommendations request
+      resetUsedImages();
+      
       // Reset conversation history since this is a new search
       setConversationHistory([]);
       
@@ -339,12 +602,19 @@ export default function Home() {
         throw new Error('Invalid response format: recommendations should be an array');
       }
       
-      // Reset used images before setting new recommendations
-      resetUsedImages();
-      
       setRecommendations(data.recommendations);
       setSearchSummary(data.search_summary || "Based on your search criteria, we've found the following recommendations.");
       setCurrentStep("results");
+      
+      // Save this search if the user is authenticated
+      if (status === 'authenticated') {
+        saveSearch(
+          initialQuery,
+          answers,
+          data.recommendations,
+          data.search_summary
+        );
+      }
     } catch (err) {
       setError(err.message);
       console.error('Error fetching college recommendations:', err);
@@ -354,7 +624,7 @@ export default function Home() {
   };
 
   // Reset the search flow
-  const resetSearch = () => {
+  const resetSearch = (persistReset = true) => {
     setInitialQuery("");
     setFollowUpQuestions([]);
     setCurrentQuestionIndex(0);
@@ -365,7 +635,17 @@ export default function Home() {
     setCurrentStep("initial");
     setError(null);
     setConversationHistory([]); // Clear conversation history for new search
+    setResponseMode("new_search"); // Reset response mode
     resetUsedImages(); // Reset college images
+    
+    // Also clear from localStorage if persistReset is true
+    if (persistReset) {
+      localStorage.removeItem('lastSearchState');
+      // Update URL to remove search ID
+      const url = new URL(window.location);
+      url.searchParams.delete('sid');
+      window.history.replaceState({}, '', url);
+    }
   };
 
   // Categorize recommendations
@@ -417,6 +697,11 @@ export default function Home() {
     
     // Check if this appears to be a new search query
     const isNewSearch = isNewSearchQuery(message);
+    
+    // If this is a new search, reset the image cache
+    if (isNewSearch) {
+      resetUsedImages();
+    }
     
     // If this is a new search, reset the conversation history
     const chatHistory = isNewSearch ? [] : conversationHistory;
@@ -541,6 +826,16 @@ export default function Home() {
       
       // Trigger scroll after results are updated
       setShouldScrollToSearch(true);
+      
+      // If this is a new search and we have recommendations, save it
+      if (isNewSearch && data.recommendations && data.recommendations.length > 0 && status === 'authenticated') {
+        saveSearch(
+          message,
+          [], // No follow-up answers for direct conversation searches
+          data.recommendations,
+          data.search_summary
+        );
+      }
       
     } catch (err) {
       setError(err.message);
@@ -674,12 +969,83 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-950">
-      <NavigationBar />
+  // Function to save a search
+  const saveSearch = async (query, answers, recommendationData, summary) => {
+    if (!session || status !== 'authenticated') return;
+    
+    try {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          initialQuery: query,
+          followUpQandA: answers,
+          recommendations: recommendationData,
+          searchSummary: summary
+        }),
+      });
       
-      <main className="flex-1 relative">
-        <div className="flex flex-col lg:flex-row h-full">
+      if (!response.ok) {
+        console.error('Failed to save search');
+      }
+    } catch (err) {
+      console.error('Error saving search:', err);
+    }
+  };
+
+  // Function to handle selecting a saved search
+  const handleSelectSavedSearch = (search) => {
+    if (!search) return;
+    
+    // Reset the state for a new search
+    resetSearch();
+    
+    // Set the initial query
+    setInitialQuery(search.initialQuery);
+    
+    // If we have recommendations, display them directly
+    if (search.recommendations && search.recommendations.length > 0) {
+      // Ensure images are properly reset before loading new ones
+      resetUsedImages();
+      
+      // Set recommendations with a slight delay to ensure DOM is ready
+      setTimeout(() => {
+        setRecommendations(search.recommendations);
+        setSearchSummary(search.searchSummary || "Based on your saved search, here are your recommendations.");
+        setCurrentStep("results");
+      }, 10);
+      
+      // Initialize conversation history with the initial query and response
+      setConversationHistory([
+        {
+          type: "user",
+          content: search.initialQuery
+        },
+        {
+          type: "assistant",
+          content: search.searchSummary || "Here are your college recommendations.",
+          responseType: "new_search",
+          includedRecommendations: search.recommendations
+        }
+      ]);
+    } else {
+      // If no recommendations, start a new search with the query
+      handleInitialSearch({ preventDefault: () => {} });
+    }
+  };
+
+  return (
+    <div className={`min-h-screen flex flex-col bg-white dark:bg-gray-950 ${
+      currentStep === "initial" ? "overflow-hidden" : ""
+    }`}>
+    <NavigationBar />
+      
+      <main className={`flex-1 relative ${
+        currentStep === "initial" ? "overflow-hidden" : ""
+      }`}>
+      <div className="flex flex-col lg:flex-row h-full">
           {/* Main Content */}
           <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-hidden">
             {/* Loading State - Only for initial search or college recommendations, not for follow-up questions */}
@@ -711,7 +1077,10 @@ export default function Home() {
 
             {/* Initial Search State */}
             {!isLoading && !error && currentStep === "initial" && (
-              <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20">
+              <div className="flex items-center justify-center min-h-[90vh] h-full pb-10 sm:pb-20 relative">
+                {/* Search History in top left - fixed position with high z-index */}
+                <SearchHistoryButton onSelectSearch={handleSelectSavedSearch} />
+                
                 <div className="w-full max-w-2xl px-4 sm:px-6 py-8 flex flex-col items-center justify-center relative">
                   {/* Animated background elements */}
                   <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -739,6 +1108,7 @@ export default function Home() {
                   <h1 className="text-center text-4xl sm:text-5xl md:text-6xl font-extrabold text-black dark:text-white mb-8 pb-2 leading-tight animate-fade-in">
                     Find Your Perfect <span className="text-[#446cec]">College</span> Match
                   </h1>
+                  
                   <form onSubmit={handleInitialSearch} className="w-full animate-fade-in-up">
                     <div className="relative group">
                       <input 
@@ -758,6 +1128,12 @@ export default function Home() {
                         </svg>
                       </button>
                     </div>
+                    
+                    {/* Example Questions */}
+                    <ExampleQuestions 
+                      onSelectQuestion={(question) => setInitialQuery(question)} 
+                      userSession={session}
+                    />
                   </form>
                 </div>
               </div>
@@ -765,7 +1141,10 @@ export default function Home() {
 
             {/* Follow-up Questions State */}
             {!isLoading && !error && currentStep === "followup" && followUpQuestions.length > 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[70vh] h-full pb-10 sm:pb-20">
+              <div className="flex flex-col items-center justify-center min-h-[70vh] h-full pb-10 sm:pb-20 relative overflow-auto">
+                {/* Search History in top left */}
+                <SearchHistoryButton onSelectSearch={handleSelectSavedSearch} />
+                
                 <div className="w-full max-w-3xl px-4 sm:px-6 py-8">
                   {/* Show conversation history */}
                   <div className="mb-8 flex flex-col space-y-4">
@@ -878,14 +1257,17 @@ export default function Home() {
 
             {/* Results State */}
             {!isLoading && !error && currentStep === "results" && recommendations && (
-              <div className="pb-10 sm:pb-20">
+              <div className="pb-10 sm:pb-20 relative">
+                {/* Search History in fixed position for consistency */}
+                <SearchHistoryButton onSelectSearch={handleSelectSavedSearch} />
+                
                 {/* Best Fit College - Centered */}
                 {getBestFit() && (
                   <div className="mb-8">
                     <div className="flex justify-center">
                       <div className="w-full max-w-3xl transform hover:scale-[1.01] sm:hover:scale-[1.02] transition-all duration-300">
                         <div className="shadow-lg rounded-xl overflow-hidden">
-                          <CollegeCard college={getBestFit()} type="bestFit" />
+                          <CollegeCard college={getBestFit()} type="bestFit" preserveState={true} />
                         </div>
                       </div>
                     </div>
@@ -905,6 +1287,7 @@ export default function Home() {
                             <CollegeCard 
                               college={college} 
                               type={college.category}
+                              preserveState={true}
                             />
                           </div>
                         </div>

@@ -18,8 +18,8 @@ const monoFont = Roboto_Mono({
 });
 
 export const metadata = {
-  title: "CollegeAdmit.AI - College Admissions Assistant",
-  description: "Find your perfect college match with CollegeAdmit.AI",
+  title: "CollegeCompass.AI - College Admissions Assistant",
+  description: "Find your perfect college match with CollegeCompass.AI",
 };
 
 export default function RootLayout({ children }) {
